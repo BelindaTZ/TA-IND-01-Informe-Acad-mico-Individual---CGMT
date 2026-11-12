@@ -1,0 +1,187 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Página-1" id="KsQ7ZnG37PkjXis3P2Dp">
+    <mxGraphModel dx="1104" dy="1490" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sheet" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=15;fontFamily=Arial;" value="" vertex="1">
+          <mxGeometry height="825" width="1120" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="header" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=15;fontFamily=Arial;" value="" vertex="1">
+          <mxGeometry height="86" width="1080" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="title" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=29;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Arquitectura de etcd&lt;/b&gt;" vertex="1">
+          <mxGeometry height="43" width="700" x="64" y="51" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=15;fontColor=#202020;fontFamily=Arial;" value="Clúster de ejemplo · Esquema conceptual · TA-IND-01" vertex="1">
+          <mxGeometry height="19" width="700" x="65" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;" value="" vertex="1">
+          <mxGeometry height="345" width="792" x="40" y="228" as="geometry" />
+        </mxCell>
+        <mxCell id="cltitle" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=18;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Clúster etcd · 3 miembros votantes&lt;/b&gt;" vertex="1">
+          <mxGeometry height="24" width="480" x="60" y="239" as="geometry" />
+        </mxCell>
+        <mxCell id="role" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=14;fontColor=#202020;fontFamily=Arial;" value="El liderazgo puede cambiar tras una elección de Raft." vertex="1">
+          <mxGeometry height="21" width="730" x="60" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="client" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=17;fontFamily=Arial;" value="&lt;b&gt;Cliente · etcdctl o aplicación&lt;/b&gt;&lt;br&gt;API v3 por gRPC · TCP 2379" vertex="1">
+          <mxGeometry height="62" width="324" x="274" y="147" as="geometry" />
+        </mxCell>
+        <mxCell id="entry" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=15;fontColor=#202020;fontFamily=Arial;" value="Cada miembro expone la API de cliente.&lt;br&gt;El cliente puede usar cualquiera de los tres." vertex="1">
+          <mxGeometry height="58" width="450" x="630" y="148" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=16;fontFamily=Arial;container=1;collapsible=0;" value="" vertex="1">
+          <mxGeometry height="103" width="224" x="60" y="328" as="geometry" />
+        </mxCell>
+        <mxCell id="m2name" parent="m2" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=20;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;etcd-2&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="195" x="13" y="9" as="geometry" />
+        </mxCell>
+        <mxCell id="m2role" parent="m2" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=15;fontColor=#202020;fontFamily=Arial;" value="Seguidor" vertex="1">
+          <mxGeometry height="21" width="195" x="13" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m2part0" parent="m2" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;API v3&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="12" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m2part1" parent="m2" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;Raft&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="70" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m2part2" parent="m2" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;KV persistente&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="86" x="128" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#666666;fontColor=#202020;fontSize=16;fontFamily=Arial;container=1;collapsible=0;" value="" vertex="1">
+          <mxGeometry height="103" width="224" x="324" y="328" as="geometry" />
+        </mxCell>
+        <mxCell id="m1name" parent="m1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=20;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;etcd-1&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="195" x="13" y="9" as="geometry" />
+        </mxCell>
+        <mxCell id="m1role" parent="m1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=15;fontColor=#202020;fontFamily=Arial;" value="Líder en este ejemplo" vertex="1">
+          <mxGeometry height="21" width="195" x="13" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m1part0" parent="m1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;API v3&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="12" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m1part1" parent="m1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;Raft&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="70" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m1part2" parent="m1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;KV persistente&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="86" x="128" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=16;fontFamily=Arial;container=1;collapsible=0;" value="" vertex="1">
+          <mxGeometry height="103" width="224" x="588" y="328" as="geometry" />
+        </mxCell>
+        <mxCell id="m3name" parent="m3" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=20;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;etcd-3&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="195" x="13" y="9" as="geometry" />
+        </mxCell>
+        <mxCell id="m3role" parent="m3" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=15;fontColor=#202020;fontFamily=Arial;" value="Seguidor" vertex="1">
+          <mxGeometry height="21" width="195" x="13" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m3part0" parent="m3" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;API v3&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="12" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m3part1" parent="m3" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;Raft&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="52" x="70" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="m3part2" parent="m3" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontColor=#202020;fontSize=11;fontFamily=Arial;arcSize=9;" value="&lt;b&gt;KV persistente&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="86" x="128" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="clientm2" edge="1" parent="1" source="client" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=0.43;exitY=1;entryX=0.5;entryY=0;" target="m2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="413.32" y="305" />
+              <mxPoint x="172" y="305" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="clientm1" edge="1" parent="1" source="client" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="m1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="clientm3" edge="1" parent="1" source="client" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=0.86;exitY=1;entryX=0.5;entryY=0;" target="m3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="552.64" y="305" />
+              <mxPoint x="700" y="305" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p21" edge="1" parent="1" source="m2" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=1;exitY=0.52;entryX=0;entryY=0.52;" target="m1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p13" edge="1" parent="1" source="m1" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=1;exitY=0.52;entryX=0;entryY=0.52;" target="m3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p23" edge="1" parent="1" source="m2" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" target="m3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="172" y="468" />
+              <mxPoint x="700" y="468" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="peerlabel" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=16;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Tráfico entre pares · Raft · TCP 2380&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="750" x="60" y="491" as="geometry" />
+        </mxCell>
+        <mxCell id="peerdesc" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=14;fontColor=#202020;fontFamily=Arial;" value="Los enlaces permiten replicar el registro, elegir líder y reenviar propuestas." vertex="1">
+          <mxGeometry height="23" width="750" x="60" y="519" as="geometry" />
+        </mxCell>
+        <mxCell id="qpanel" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;" value="" vertex="1">
+          <mxGeometry height="138" width="270" x="850" y="228" as="geometry" />
+        </mxCell>
+        <mxCell id="qhead" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=16;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Quórum de escritura&lt;/b&gt;" vertex="1">
+          <mxGeometry height="23" width="232" x="868" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="qnum" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=24;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;2 de 3&lt;/b&gt;" vertex="1">
+          <mxGeometry height="37" width="232" x="868" y="264" as="geometry" />
+        </mxCell>
+        <mxCell id="qdesc" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=14;fontColor=#202020;fontFamily=Arial;" value="Tolera la caída de un miembro.&lt;br&gt;Sin quórum se detiene el commit." vertex="1">
+          <mxGeometry height="43" width="235" x="868" y="307" as="geometry" />
+        </mxCell>
+        <mxCell id="reads" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;" value="" vertex="1">
+          <mxGeometry height="190" width="270" x="850" y="383" as="geometry" />
+        </mxCell>
+        <mxCell id="rhead" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=16;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Lecturas de claves (Range)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="25" width="234" x="868" y="397" as="geometry" />
+        </mxCell>
+        <mxCell id="rdesc" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=14;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Linealizable por defecto&lt;/b&gt;&lt;br&gt;Se coordina mediante Raft.&lt;br&gt;&lt;br&gt;&lt;b&gt;Serializable bajo petición&lt;/b&gt;&lt;br&gt;El miembro responde localmente&lt;br&gt;y puede devolver datos atrasados." vertex="1">
+          <mxGeometry height="119" width="234" x="868" y="432" as="geometry" />
+        </mxCell>
+        <mxCell id="flow" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=22;fontColor=#202020;fontFamily=Arial;" value="&lt;b&gt;Flujo de una escritura (PUT)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="29" width="1080" x="40" y="591" as="geometry" />
+        </mxCell>
+        <mxCell id="s0" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;align=left;spacingLeft=13;" value="&lt;b&gt;1 · Enviar&lt;/b&gt;&lt;br&gt;&lt;br&gt;El cliente envía PUT&lt;br&gt;a cualquier miembro." vertex="1">
+          <mxGeometry height="116" width="200" x="40" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;align=left;spacingLeft=13;" value="&lt;b&gt;2 · Proponer&lt;/b&gt;&lt;br&gt;&lt;br&gt;Si recibe un seguidor,&lt;br&gt;reenvía la propuesta&lt;br&gt;al líder." vertex="1">
+          <mxGeometry height="116" width="200" x="260" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="step1" edge="1" parent="1" source="s0" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0;entryPerimeter=1;entryY=0.5;endSize=5;" target="s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;align=left;spacingLeft=13;" value="&lt;b&gt;3 · Replicar&lt;/b&gt;&lt;br&gt;&lt;br&gt;El líder registra la&lt;br&gt;propuesta y replica&lt;br&gt;la entrada." vertex="1">
+          <mxGeometry height="116" width="200" x="480" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="step2" edge="1" parent="1" source="s1" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0;entryPerimeter=1;entryY=0.5;endSize=5;" target="s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#F0F0F0;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;align=left;spacingLeft=13;" value="&lt;b&gt;4 · Confirmar&lt;/b&gt;&lt;br&gt;&lt;br&gt;El líder hace commit&lt;br&gt;al replicarse la entrada&lt;br&gt;en 2 de 3 miembros." vertex="1">
+          <mxGeometry height="116" width="200" x="700" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="step3" edge="1" parent="1" source="s2" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0;entryPerimeter=1;entryY=0.5;endSize=5;" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" parent="1" style="rounded=0;absoluteArcSize=1;arcSize=18;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontColor=#202020;fontSize=15;fontFamily=Arial;align=left;spacingLeft=13;" value="&lt;b&gt;5 · Aplicar y responder&lt;/b&gt;&lt;br&gt;&lt;br&gt;El miembro receptor&lt;br&gt;aplica la entrada y&lt;br&gt;responde al cliente." vertex="1">
+          <mxGeometry height="116" width="200" x="920" y="633" as="geometry" />
+        </mxCell>
+        <mxCell id="step4" edge="1" parent="1" source="s3" style="edgeStyle=none;rounded=0;html=1;strokeColor=#666666;strokeWidth=1;endArrow=block;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0;entryPerimeter=1;entryY=0.5;endSize=5;" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="source" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=13;fontColor=#202020;fontFamily=Arial;" value="Fuentes oficiales de etcd v3.6 · &lt;a href=&quot;https://etcd.io/docs/v3.6/op-guide/clustering/&quot; style=&quot;color:#444444&quot;&gt;Guía de clúster&lt;/a&gt; · &lt;a href=&quot;https://etcd.io/docs/v3.6/faq/&quot; style=&quot;color:#444444&quot;&gt;FAQ&lt;/a&gt; · &lt;a href=&quot;https://etcd.io/docs/v3.6/learning/api_guarantees/&quot; style=&quot;color:#444444&quot;&gt;Garantías de la API&lt;/a&gt;" vertex="1">
+          <mxGeometry height="22" width="1080" x="40" y="768" as="geometry" />
+        </mxCell>
+        <mxCell id="scope" parent="1" style="text;html=1;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacing=0;fontSize=13;fontColor=#202020;fontFamily=Arial;" value="El esquema ilustra la arquitectura y el flujo esperado de un clúster de ejemplo. No se ejecutó un experimento." vertex="1">
+          <mxGeometry height="21" width="1080" x="40" y="796" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
