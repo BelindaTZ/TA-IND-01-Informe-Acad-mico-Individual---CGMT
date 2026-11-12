@@ -1,0 +1,330 @@
+% =====================================================================
+% TA-IND-01 — Informe Académico Individual:
+% análisis crítico de un sistema distribuido real
+% Compilar: pdflatex -> biber -> pdflatex -> pdflatex
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Codificación e idioma ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{csquotes}
+
+% ---------- Formato académico: Times 11 pt, márgenes 2,54 cm ----------
+\usepackage{mathptmx}                 % Times (cuerpo y matemáticas)
+\usepackage[margin=2.54cm]{geometry}
+\usepackage{microtype}
+\usepackage{setspace}
+\singlespacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\usepackage{ragged2e}
+% (el texto ya sale justificado por defecto en article)
+
+% ---------- Títulos: 16/14/12 pt en negrita, negro ----------
+\usepackage{titlesec}
+\titleformat{\section}{\bfseries\fontsize{16}{19}\selectfont}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\bfseries\fontsize{14}{17}\selectfont}{\thesubsection.}{0.6em}{}
+\titleformat{\subsubsection}{\bfseries\fontsize{12}{14}\selectfont}{\thesubsubsection.}{0.6em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{10pt}{3pt}
+
+% ---------- Número de página abajo a la derecha ----------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ---------- Figuras, tablas y código ----------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  inputencoding=utf8,
+  extendedchars=true,
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1
+           {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1 {Ñ}{{\~N}}1
+}
+
+% ---------- Referencias IEEE con biblatex + biber ----------
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\addbibresource{referencias.bib}
+
+% ---------- Enlaces (va casi al final) ----------
+\usepackage[hidelinks]{hyperref}
+
+% =====================================================================
+% Macros del documento
+% =====================================================================
+\newcommand{\sistemaA}{Apache Cassandra}
+\newcommand{\sistemaB}{[Sistema B]}   % <- completar cuando lo elijas
+
+% Modo borrador: los avisos \pendiente{} se ven en rojo.
+% Para la versión final cambia \borradortrue por \borradorfalse.
+\newif\ifborrador
+\borradortrue
+\newcommand{\pendiente}[1]{\ifborrador\textcolor{red}{[PENDIENTE: #1]}\fi}
+
+% Marcador de figura/captura (se reemplaza por \includegraphics al tenerla)
+\newcommand{\marcador}[2]{%
+  \fbox{\parbox[c][#2][c]{0.9\textwidth}{\centering\small #1}}}
+
+% =====================================================================
+% Datos de la carátula (completar)
+% =====================================================================
+\newcommand{\universidad}{Universidad Técnica Estatal de Quevedo}
+\newcommand{\facultad}{Facultad de Ciencias de la Ingeniería}
+\newcommand{\carrera}{\pendiente{nombre exacto de la carrera}}
+\newcommand{\asignatura}{Aplicaciones Distribuidas}
+\newcommand{\codigoactividad}{TA-IND-01}
+\newcommand{\estudiante}{\pendiente{nombre completo}}
+\newcommand{\paralelo}{\pendiente{paralelo}}
+\newcommand{\urlrepo}{\pendiente{https://github.com/usuario/repositorio}}
+\newcommand{\titulodoc}{Análisis crítico de \sistemaA{} frente a \sistemaB{}}
+
+\begin{document}
+
+% =====================================================================
+% CARÁTULA (sin numeración)
+% =====================================================================
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  {\Large\bfseries \universidad\par}
+  \vspace{0.4cm}
+  {\large \facultad\par}
+  \vspace{0.2cm}
+  {\large Carrera: \carrera\par}
+  \vspace{2.2cm}
+  {\large Asignatura: \asignatura\par}
+  \vspace{0.2cm}
+  {\large Código de la actividad: \codigoactividad\par}
+  \vspace{1.6cm}
+  {\LARGE\bfseries Informe Académico Individual:\\[0.3cm] \titulodoc\par}
+  \vspace{2.2cm}
+  {\large Estudiante: \estudiante\par}
+  \vspace{0.2cm}
+  {\large Paralelo: \paralelo\par}
+  \vspace{0.2cm}
+  {\large Fecha: \today\par}
+  \vspace{0.6cm}
+  {\large Repositorio: \urlrepo\par}
+  \vfill
+\end{titlepage}
+\setcounter{page}{1}
+
+% =====================================================================
+% RESUMEN (150 a 200 palabras)
+% =====================================================================
+\section*{Resumen}
+\pendiente{Escribe entre 150 y 200 palabras: sistema analizado (\sistemaA), enfoque
+(comparación con \sistemaB, conceptos de la Unidad~1, experimento propio) y
+conclusiones principales. Redáctalo al final, cuando ya tengas los resultados.}
+
+\medskip
+\noindent\textbf{Palabras clave:} \pendiente{4 a 6 palabras clave}.
+
+% =====================================================================
+\section{Introducción}
+% =====================================================================
+% - Qué problema resuelve el sistema
+% - Quién lo usa y a qué escala opera
+% - Por qué lo elegiste
+% - Objetivo del informe y cómo se organiza el documento
+\pendiente{Problema que resuelve \sistemaA, quién lo usa, escala de operación,
+motivo de la elección y organización del informe.}
+
+% =====================================================================
+\section{Arquitectura del sistema}
+% =====================================================================
+% - Componentes y cómo se comunican
+% - Diagrama de arquitectura propio (draw.io o TikZ) y su evolución desde
+%   el esquema a mano (Anexo A)
+\pendiente{Descripción de componentes y comunicación entre ellos.}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{figuras/arquitectura-cassandra.pdf}
+  \marcador{Diagrama de arquitectura propio (draw.io o TikZ)}{5cm}
+  \caption{Arquitectura de \sistemaA{} (elaboración propia).}
+  \label{fig:arquitectura}
+\end{figure}
+
+\pendiente{Explica la Figura~\ref{fig:arquitectura} y cómo evolucionó desde tu
+esquema a mano (Anexo~A).}
+
+% =====================================================================
+\section{Análisis con los conceptos de la Unidad 1}
+% =====================================================================
+
+\subsection{Transparencias de distribución}
+% Acceso, ubicación, migración, reubicación, replicación, concurrencia y fallos:
+% cuáles ofrece el sistema, cuáles no, y por qué.
+\pendiente{Analiza las siete transparencias: cuáles ofrece \sistemaA{} y cuáles no, con justificación.}
+
+\subsection{CAP y PACELC}
+% Qué prioriza ante una partición y qué prioriza sin partición (latencia vs
+% consistencia), con evidencia de documentación técnica o artículos.
+\pendiente{Clasificación CAP y PACELC con evidencia citada.}
+
+\subsection{Modelos de comunicación}
+% Cliente-servidor, P2P o híbrido; sincrónica o asincrónica;
+% sockets, RPC o mensajería.
+\pendiente{Modelo de comunicación del sistema y justificación.}
+
+\subsection{Tolerancia a fallos}
+% Qué fallos soporta, cómo los detecta, cómo se recupera;
+% al menos un incidente real documentado si existe.
+\pendiente{Tipos de fallos, detección, recuperación e incidente real documentado.}
+
+% =====================================================================
+\section{Experimentación propia}
+% =====================================================================
+% Evidencias de autoría 1 y 2: capturas de ejecución real y experimento propio.
+% Comandos y resultados completos van en /experimento del repositorio.
+
+\subsection{Entorno y justificación}
+\pendiente{Cómo levantaste el sistema (por ejemplo, Docker), versión y por qué
+elegiste ese entorno.}
+
+\subsection{Procedimiento}
+\pendiente{Describe el experimento y el concepto de la Unidad~1 que ilustra.}
+
+\begin{lstlisting}[caption={Comandos usados en el experimento (ejemplo de formato).},label={lst:comandos}]
+# Reemplaza este bloque por tus comandos reales.
+# El archivo completo debe estar en experimento/ del repositorio.
+\end{lstlisting}
+
+\subsection{Resultados}
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{capturas/captura-01.png}
+  \marcador{Captura 1: con tu usuario en el prompt, fecha y hora visibles}{4cm}
+  \caption{\pendiente{Qué muestra la captura 1.}}
+  \label{fig:cap1}
+\end{figure}
+
+\pendiente{Incluye al menos 4 capturas propias de la ejecución real del sistema
+(duplica el bloque de figura anterior).}
+
+\subsection{Interpretación}
+\pendiente{Interpreta los resultados a la luz de las transparencias, CAP/PACELC,
+comunicación y tolerancia a fallos de la sección anterior.}
+
+% =====================================================================
+\section{Ejemplos del entorno del estudiante}
+% =====================================================================
+% Al menos dos sistemas reales que usas o conoces de primera mano
+% (SGA de la UTEQ, banca móvil, WhatsApp, plataforma de pagos, etc.).
+% Relaciona lo que observaste como usuario con un concepto de la unidad.
+
+\subsection{Ejemplo 1: \pendiente{sistema}}
+\pendiente{Qué observaste (caída, mensaje tardío, saldo que tardó en actualizarse) y con qué concepto se relaciona.}
+
+\subsection{Ejemplo 2: \pendiente{sistema}}
+\pendiente{Observación y concepto asociado.}
+
+% =====================================================================
+\section{Análisis comparativo}
+% =====================================================================
+% Mínimo cinco criterios de la Unidad 1 y su discusión.
+
+\begin{table}[H]
+  \centering
+  \caption{Comparación entre \sistemaA{} y \sistemaB{}.}
+  \label{tab:comparacion}
+  \small
+  \begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.4cm}XX@{}}
+    \toprule
+    Criterio & \sistemaA & \sistemaB \\
+    \midrule
+    Transparencias de distribución & \pendiente{} & \pendiente{} \\
+    CAP y PACELC                   & \pendiente{} & \pendiente{} \\
+    Modelo de comunicación         & \pendiente{} & \pendiente{} \\
+    Replicación y consenso         & \pendiente{} & \pendiente{} \\
+    Tolerancia a fallos            & \pendiente{} & \pendiente{} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\pendiente{Discute la Tabla~\ref{tab:comparacion}: qué diferencias importan y por qué.}
+
+% =====================================================================
+\section{Postura crítica}
+% =====================================================================
+% Fortalezas, limitaciones, trade-offs y contextos donde NO sería la mejor
+% opción. Toda afirmación argumentada y respaldada.
+\subsection{Fortalezas}
+\pendiente{}
+\subsection{Limitaciones y compromisos (\emph{trade-offs})}
+\pendiente{}
+\subsection{Contextos en los que no sería la mejor opción}
+\pendiente{}
+
+% =====================================================================
+\section{Conclusiones}
+% =====================================================================
+% Afirmaciones concretas derivadas del análisis y del experimento;
+% no repeticiones de la teoría.
+\pendiente{Conclusiones concretas basadas en el análisis y lo observado en el experimento.}
+
+% =====================================================================
+\section*{Declaración de uso de inteligencia artificial}
+\addcontentsline{toc}{section}{Declaración de uso de inteligencia artificial}
+% =====================================================================
+% Herramienta, versión, para qué se usó y cómo se verificó lo obtenido
+% (o declaración de que no se usó). Debe reflejar lo que realmente hiciste.
+\pendiente{Herramienta y versión, para qué la usaste y cómo verificaste lo obtenido.}
+
+% =====================================================================
+% REFERENCIAS (IEEE con biblatex; mínimo 6, 3 con DOI de revista indexada)
+% =====================================================================
+\printbibliography[title={Referencias}]
+
+% =====================================================================
+% ANEXOS
+% =====================================================================
+\clearpage
+\appendix
+\section*{Anexo A. Esquema inicial a mano}
+\addcontentsline{toc}{section}{Anexo A. Esquema inicial a mano}
+% Fotografía del primer bosquejo, con tu nombre y la fecha visibles.
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.8\textwidth]{figuras/esquema-a-mano.jpg}
+  \marcador{Fotografía del esquema a mano (nombre y fecha visibles)}{7cm}
+  \caption{Esquema inicial de la arquitectura de \sistemaA{}, dibujado a mano.}
+  \label{fig:esquema-mano}
+\end{figure}
+
+\section*{Anexo B. Capturas de lectura de las fuentes}
+\addcontentsline{toc}{section}{Anexo B. Capturas de lectura de las fuentes}
+% Al menos 3 capturas de los artículos citados, con fragmentos subrayados
+% o anotados y la página indicada. Cada captura corresponde a una cita.
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.8\textwidth]{capturas/lectura-01.png}
+  \marcador{Captura de lectura 1 (fragmento subrayado, página indicada)}{6cm}
+  \caption{\pendiente{Fuente citada (clave del .bib), p.~X: qué fragmento se subrayó y por qué.}}
+  \label{fig:lectura1}
+\end{figure}
+
+\end{document}
