@@ -19,7 +19,7 @@
 - Leer las fuentes seleccionadas y extraer los datos necesarios para el informe.
 - Preparar el primer esquema de arquitectura.
 
-**Horario de trabajo:** 23:01 a 23:22.
-**Tiempo dedicado:** 19 minutos.
+**Horario de trabajo:** 23:01 a 23:25.
+**Tiempo dedicado:** 24 minutos.
 
 **Estado:** Preparación inicial. No se han realizado pruebas experimentales.
