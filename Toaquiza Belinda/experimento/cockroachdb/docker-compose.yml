@@ -1,0 +1,79 @@
+# Clúster CockroachDB de 3 nodos (modo seguro, certificados) — TA-IND-01
+# Los certificados viven en volúmenes de Docker (NO se suben al repositorio).
+# Pasos completos en README.md de esta carpeta.
+name: crdb-lab
+
+x-roach: &roach
+  # Cuando confirmes tu versión exacta (docker exec roach1 cockroach version),
+  # reemplaza "latest" por ese tag para que el experimento sea reproducible.
+  image: cockroachdb/cockroach:v26.4.0
+  networks: [crdbnet]
+
+services:
+  roach1:
+    <<: *roach
+    container_name: roach1
+    hostname: roach1
+    command: >
+      start
+      --certs-dir=/certs
+      --advertise-addr=roach1:26257
+      --listen-addr=roach1:26257
+      --http-addr=roach1:8080
+      --join=roach1:26257,roach2:26257,roach3:26257
+      --store=/cockroach/cockroach-data
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    volumes:
+      - roach1-data:/cockroach/cockroach-data
+      - certs:/certs:ro
+
+  roach2:
+    <<: *roach
+    container_name: roach2
+    hostname: roach2
+    command: >
+      start
+      --certs-dir=/certs
+      --advertise-addr=roach2:26257
+      --listen-addr=roach2:26257
+      --http-addr=roach2:8080
+      --join=roach1:26257,roach2:26257,roach3:26257
+      --store=/cockroach/cockroach-data
+    ports:
+      - "26258:26257"
+      - "8081:8080"
+    volumes:
+      - roach2-data:/cockroach/cockroach-data
+      - certs:/certs:ro
+
+  roach3:
+    <<: *roach
+    container_name: roach3
+    hostname: roach3
+    command: >
+      start
+      --certs-dir=/certs
+      --advertise-addr=roach3:26257
+      --listen-addr=roach3:26257
+      --http-addr=roach3:8080
+      --join=roach1:26257,roach2:26257,roach3:26257
+      --store=/cockroach/cockroach-data
+    ports:
+      - "26259:26257"
+      - "8082:8080"
+    volumes:
+      - roach3-data:/cockroach/cockroach-data
+      - certs:/certs:ro
+
+networks:
+  crdbnet:
+
+volumes:
+  roach1-data:
+  roach2-data:
+  roach3-data:
+  certs:
+    external: true
+    name: crdb-certs
