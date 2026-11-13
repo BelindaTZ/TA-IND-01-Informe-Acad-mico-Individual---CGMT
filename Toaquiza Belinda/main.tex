@@ -66,7 +66,7 @@
 
 % ---------- Referencias IEEE con biblatex + biber ----------
 \usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
-\addbibresource{referencias.bib}
+\addbibresource{Referencias/referencias.bib}
 
 % ---------- Enlaces (va casi al final) ----------
 \usepackage[hidelinks]{hyperref}
@@ -88,16 +88,15 @@
   \fbox{\parbox[c][#2][c]{0.9\textwidth}{\centering\small #1}}}
 
 % =====================================================================
-% Datos de la carátula (completar)
+% Datos de la carátula
 % =====================================================================
 \newcommand{\universidad}{Universidad Técnica Estatal de Quevedo}
 \newcommand{\facultad}{Facultad de Ciencias de la Ingeniería}
-\newcommand{\carrera}{\pendiente{nombre exacto de la carrera}}
+\newcommand{\carrera}{Ingeniería de Software}
 \newcommand{\asignatura}{Aplicaciones Distribuidas}
 \newcommand{\codigoactividad}{TA-IND-01}
-\newcommand{\estudiante}{\pendiente{nombre completo}}
-\newcommand{\paralelo}{\pendiente{paralelo}}
-\newcommand{\urlrepo}{\pendiente{https://github.com/usuario/repositorio}}
+\newcommand{\estudiante}{Toaquiza Zambrano Belinda Betzabeth}
+\newcommand{\paralelo}{A}
 \newcommand{\titulodoc}{Análisis crítico de \sistemaA{} frente a \sistemaB{}}
 
 \begin{document}
@@ -126,7 +125,6 @@
   \vspace{0.2cm}
   {\large Fecha: \today\par}
   \vspace{0.6cm}
-  {\large Repositorio: \urlrepo\par}
   \vfill
 \end{titlepage}
 \setcounter{page}{1}
@@ -158,7 +156,7 @@ motivo de la elección y organización del informe.}
 % - Componentes y cómo se comunican
 % - Diagrama de arquitectura propio (draw.io o TikZ) y su evolución desde
 %   el esquema a mano (Anexo A)
-La aplicación cliente envía consultas al nodo de entrada de CockroachDB mediante el protocolo PostgreSQL. La capa SQL analiza y ejecuta las consultas, mientras que la capa de transacciones coordina las operaciones de lectura y escritura. La capa de distribución localiza los rangos de claves y dirige cada escritura a la réplica encargada de ese rango. En el ejemplo del diagrama, esa réplica es también el líder Raft y se comunica con las otras dos para replicar los cambios. La escritura se confirma cuando se replica en al menos dos de las tres réplicas, y cada nodo guarda los cambios en su almacén local Pebble.
+La aplicación cliente envía consultas a un nodo de CockroachDB mediante un controlador compatible con PostgreSQL. La capa SQL analiza y ejecuta las consultas, mientras que la capa de transacciones coordina las operaciones de lectura y escritura. La capa de distribución localiza los rangos de claves y dirige cada operación a las réplicas correspondientes, como se describe en la arquitectura del sistema \cite{cockroachlabsArchitecture}. En el ejemplo del diagrama, la réplica que coordina la escritura es el líder Raft y se comunica con las otras dos réplicas. La escritura se confirma al alcanzar el quórum requerido, es decir, al replicarse en al menos dos de los tres nodos \cite{cockroachlabsReplication}. Finalmente, cada nodo conserva los datos en su almacenamiento local Pebble \cite{cockroachlabsStorage}.
 
 \begin{figure}[H]
   \centering
