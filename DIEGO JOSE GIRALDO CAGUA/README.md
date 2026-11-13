@@ -24,7 +24,7 @@ El análisis aborda los principales conceptos de la Unidad 1, relacionando la te
 ## 3. Estructura del repositorio
 
 ```text
-analisis-facebook-tao-dynamodb/
+TA-IND-01-Informe-Acad-mico-Individual---CGMT/DIEGO JOSE GIRALDO CAGUA
 │
 ├── README.md
 ├── BITACORA.md
