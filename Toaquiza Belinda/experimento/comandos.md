@@ -247,14 +247,14 @@ Captura: [primer estado tras el arranque, tres nodos UN y lectura final con ALL]
 
 **Concepto de la Unidad 1:** teorema CAP (consistencia vs. disponibilidad ante una partición).
 
-**Pregunta:** ¿Cómo afecta una partición de red 2+1 las lecturas y escrituras de Cassandra según el nivel de consistencia, y qué datos pueden leerse después de reconectar el nodo aislado?
+**Pregunta:** ¿Cómo afecta una partición de red 2+1 las lecturas y escrituras en CockroachDB y Cassandra, y qué datos pueden verificarse después de reconectar el nodo aislado?
 
 **Hipótesis formuladas antes de los ensayos**
 
 - **E2, CockroachDB:** Si aíslo una réplica y las otras dos siguen comunicándose, espero que el lado mayoritario pueda confirmar una escritura cuando el rango mantenga quórum; una escritura nueva desde el lado aislado no debería confirmarse. Registraré también si las lecturas terminan o quedan esperando.
 - **E2, Cassandra:** En una partición 2+1, si el cliente puede acceder a un coordinador en cada lado, espero que `ONE` pueda operar en ambos lados; `QUORUM` debería completarse solo en el lado con dos réplicas y `ALL` no debería completarse en ninguno. Con `ONE`, una lectura podría devolver una versión anterior. La observación depende de la conectividad real del cliente y de las réplicas, que verificaré durante la prueba. Predicción basada en `apacheCassandraDynamo`, niveles de consistencia.
 
-**Registro:** La hipótesis de Cassandra se formuló antes de ejecutar este experimento. La parte de CockroachDB queda pendiente.
+**Registro:** Las hipótesis de ambos sistemas se formularon antes de los ensayos y se contrastan con las operaciones documentadas; cualquier resultado sin captura queda señalado como no verificado.
 
 ### Procedimiento — Cassandra
 
@@ -272,16 +272,57 @@ La última imagen reúne la reconexión, el estado final de tres nodos `UN` y la
 
 ### Procedimiento — CockroachDB
 
-Pendiente de ejecutar la parte del Experimento 2 para CockroachDB. No se incluye aquí una comparación experimental entre los dos motores.
+La prueba se realizó con CockroachDB v26.4.0 en Docker Compose. Se aisló `roach3` de `crdb-lab_crdbnet` manteniendo encendido el contenedor; `roach1` y `roach2` permanecieron conectados.
 
+| Paso | Qué hice | Comandos y observaciones | Captura |
+|---|---|---|---|
+| 1 | Inicié el clúster y comprobé el estado, los datos, el rango y la red de roach3 | `docker compose up -d`; `docker compose ps -a`; `docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257`; consulta de `prueba.datos`, `SHOW RANGES FROM TABLE datos` e inspección de red | [Línea base](../Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos.png); [detalle de datos, rango e IP](../Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos_detalle.png) |
+| 2 | Desconecté roach3 y confirmé que siguiera encendido | `docker network disconnect $red roach3`; `docker inspect roach3 --format '{{json .NetworkSettings.Networks}}'` devolvió `{}`; `docker compose ps -a` lo mostró `Up` | [Estado aislado](../Capturas/2026-11-13_cockroachdb_e2_02_roach3_aislado_estado.png); [captura compuesta de aislamiento y mayoría](../Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png) |
+| 3 | Desde roach1 y roach2 leí id 1, escribí id 31 y lo consulté | `SELECT * FROM datos WHERE id = 1;`; `INSERT INTO datos VALUES (31, 'particion_mayoria');`; `SELECT * FROM datos WHERE id = 31;` | [Operaciones mayoritarias](../Capturas/2026-11-13_cockroachdb_e2_03_lado_mayoritario_lectura_escritura.png); [captura compuesta](../Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png) |
+| 4 | Probé reconectar con los argumentos en orden incorrecto | `docker network connect --ip $ipRoach3 --alias roach3 $red roach3`; Docker respondió que no pudo parsear `--alias` como IP; `node status` mostró roach3 `false/false` | [Intento fallido](../Capturas/2026-11-13_cockroachdb_e2_05_reconexion_fallida_roach3.png) |
+| 5 | Reconecté con la IP original y verifiqué estado y datos | A las 17:01:03: `docker network connect --ip 172.22.0.2 --alias roach3 crdb-lab_crdbnet roach3`; a las 17:03:26 `node status` mostró los tres nodos activos y la consulta devolvió id 31 | [Reconexión](../Capturas/2026-11-13_cockroachdb_e2_06_reconexion_ip_original.png); [estado y consulta de las 17:03](../Capturas/2026-11-13_cockroachdb_e2_07_tres_nodos_activos.png) |
+| 6 | La captura posterior muestra una sesión local SQL en roach3 | En la reproducción del escenario para recuperar la captura original perdida, a las 17:26:15 ejecuté `docker exec -it roach3 cockroach sql --certs-dir=/certs --host=localhost:26257 --database=prueba`; la lectura de id 1 dio `replica unavailable`/`lost quorum`; se introdujo el INSERT de id 32, sin respuesta visible | [Sesión SQL aislada](../Capturas/2026-11-13_cockroachdb_e2_04_lado_aislado_sesion_sql.png) |
+| 7 | Comprobé una reconexión posterior, el estado y la presencia de id 32 | Durante esa reproducción, a las 17:30:32 se ejecutó `docker network connect --ip 172.22.0.2 --alias roach3 crdb-lab_crdbnet roach3`; status primero mostró roach3 `false/false`, y a las 17:31:20 los tres `true/true`; consultas de id 32 no devolvieron filas | [Verificación posterior](../Capturas/2026-11-13_cockroachdb_e2_08_verificacion_final_filas.png) |
+
+Las capturas de las 17:26–17:31 corresponden a la reproducción del escenario para recuperar la captura original que se había perdido. Por eso aparecen después de la primera verificación de las 17:03; la segunda ejecución de `network connect` forma parte de esa repetición, no de una desconexión inesperada.
+### Procedimiento — Apache Cassandra
+
+Documentado en la sección anterior con las capturas de su ejecución.
 ### Resultados
 
 **CockroachDB**
 
-```
-COMPLETAR: comandos y salidas reales
-```
+#### Arranque y línea base — 16:53:49
 
+Los tres contenedores aparecían `Up` y `node status` mostró `is_available=true` e `is_live=true` para todos. `prueba.datos` devolvió las filas 1, 2, 3, 4 y 6; `SHOW RANGES FROM TABLE datos` mostró el rango 88 con votantes `{1,2,3}`. `docker inspect roach3 --format '{{json .NetworkSettings.Networks}}'` mostró la red `crdb-lab_crdbnet`, IP `172.22.0.2` y alias `roach3`.
+
+La cronología indica que la primera consulta de estado, cuando los contenedores llevaban alrededor de un segundo activos, devolvió `connection refused`; ese resultado inicial no aparece en las capturas. Evidencias: [línea base](../Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos.png) y [detalle](../Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos_detalle.png).
+
+#### Aislamiento de roach3 — 16:56:47
+
+`docker inspect` devolvió `{}` para las redes de roach3, mientras `docker compose ps -a` aún lo mostraba `Up`. El proceso permaneció encendido y se aisló la conectividad. Capturas: [estado de roach3](../Capturas/2026-11-13_cockroachdb_e2_02_roach3_aislado_estado.png) y [captura compuesta](../Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png).
+
+#### Lado mayoritario — 16:57:52
+
+En roach1, `SELECT * FROM datos WHERE id = 1;` devolvió `1 | a`; `INSERT INTO datos VALUES (31, 'particion_mayoria');` devolvió `INSERT 0 1`; y `SELECT * FROM datos WHERE id = 31;` devolvió `31 | particion_mayoria`. Capturas: [prueba SQL](../Capturas/2026-11-13_cockroachdb_e2_03_lado_mayoritario_lectura_escritura.png) y [captura compuesta](../Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png).
+
+#### Reconexión inicial — 17:00:05 a 17:03:26
+
+El primer comando `docker network connect --ip $ipRoach3 --alias roach3 $red roach3` respondió `invalid argument "--alias" for "--ip" flag: failed to parse IP: "--alias"`; no reconectó el nodo. En ese bloque `node status` mostró roach3 `is_available=false` e `is_live=false`, con roach1 y roach2 activos. A las 17:01:03 se reconectó con `docker network connect --ip 172.22.0.2 --alias roach3 crdb-lab_crdbnet roach3`; `docker inspect` confirmó la red, IP original y alias. La captura no muestra la salida `Usage` mencionada en la cronología. A las 17:03:26 los tres nodos estaban activos, id 31 seguía visible y el rango 88 conservaba votantes `{1,2,3}`.
+
+Capturas: [error del primer intento](../Capturas/2026-11-13_cockroachdb_e2_05_reconexion_fallida_roach3.png), [reconexión con IP original](../Capturas/2026-11-13_cockroachdb_e2_06_reconexion_ip_original.png) y [verificación de las 17:03](../Capturas/2026-11-13_cockroachdb_e2_07_tres_nodos_activos.png).
+
+#### Sesión SQL desde roach3 — 17:26:15; secuencia no continua
+
+La captura muestra que la consola SQL de roach3 abrió. `SELECT * FROM datos WHERE id = 1;` devolvió el error `replica unavailable`, con el detalle `lost quorum` y `SQLSTATE XXUUU`. Después se introdujo `INSERT INTO datos VALUES (32, 'particion_aislado');`, pero la captura termina sin respuesta ni nuevo prompt: el intento aparece en pantalla y la sesión parece seguir esperando al capturar; no queda confirmado si la escritura terminó. La imagen muestra también el estado previo y el aislamiento. Captura: [sesión de roach3](../Capturas/2026-11-13_cockroachdb_e2_04_lado_aislado_sesion_sql.png).
+
+Esta captura corresponde a la repetición del escenario después de perder la captura original; por eso su hora es posterior a la reconexión y al estado activo de las 17:03 de la primera ejecución.
+
+#### Comprobación posterior — 17:30:32 y 17:31:20
+
+La captura añadida muestra otra ejecución de `docker network connect --ip 172.22.0.2 --alias roach3 crdb-lab_crdbnet roach3`. `docker inspect` confirmó la red, la IP y el alias, pero el `node status` de ese bloque aún marcó roach3 `false/false`. A las 17:31:20, otro `node status` mostró los tres nodos `true/true`. Dos consultas puntuales de id 32 devolvieron el encabezado sin filas. Esto confirma que id 32 no era visible después de reconectar, pero no determina el resultado del INSERT pendiente durante el aislamiento.
+
+Este `network connect` pertenece a la repetición del escenario para recuperar la captura perdida; no representa una desconexión inesperada dentro de la primera ejecución. Captura: [estado posterior e id 32](../Capturas/2026-11-13_cockroachdb_e2_08_verificacion_final_filas.png).
 **Cassandra**
 
 #### cass3 aislado — 16:25:51 y 16:26:00
@@ -317,15 +358,15 @@ Captura: [reconexión, tres nodos UN y lectura final con ALL](../Capturas/2026-1
 
 | Situación | CockroachDB | Cassandra |
 |---|---|---|
-| Lado aislado: ¿acepta escrituras? ¿lecturas? | Pendiente de medir | Con `ONE`, lectura de id 1 y escritura/lectura de id 21 funcionaron por `127.0.0.1`; `QUORUM` lectura y escritura fallaron (2 requeridas, 1 viva); `ALL` no se probó. |
-| Lado con mayoría: ¿acepta escrituras? ¿lecturas? | Pendiente de medir | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 23 y 24 sin error visible; `ALL` lectura y escritura fallaron (3 requeridas, 2 vivas). |
-| Tras reconectar: ¿datos consistentes? ¿cómo se reconcilian? | Pendiente de medir | Los tres nodos quedaron `UN`; `ALL` devolvió ids 21, 23 y 24. La reconciliación de escrituras concurrentes y el mecanismo de sincronización no se verificaron. |
+| Lado aislado: ¿acepta escrituras? ¿lecturas? | En `roach3`, la lectura de id 1 devolvió `replica unavailable`/`lost quorum` (`SQLSTATE XXUUU`). El INSERT de id 32 se introdujo pero no tiene respuesta visible; su resultado durante el aislamiento no se verificó. | Con `ONE`, lectura de id 1 y escritura/lectura de id 21 funcionaron por `127.0.0.1`; `QUORUM` lectura y escritura fallaron (2 requeridas, 1 viva); `ALL` no se probó. |
+| Lado con mayoría: ¿acepta escrituras? ¿lecturas? | Lectura de id 1 e inserción/lectura de id 31 confirmadas con 2 nodos conectados y rango con mayoría votante. | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 23 y 24 sin error visible; `ALL` lectura y escritura fallaron (3 requeridas, 2 vivas). |
+| Tras reconectar: ¿datos consistentes? ¿cómo se reconcilian? | Tres nodos `is_available=true` e `is_live=true`; la fila 31 siguió visible y el rango 88 volvió a mostrar votantes {1,2,3}. En una comprobación posterior, id 32 no devolvió filas; eso no establece el resultado de su INSERT durante el aislamiento. | Los tres nodos quedaron `UN`; `ALL` devolvió ids 21, 23 y 24. La reconciliación de escrituras concurrentes y el mecanismo de sincronización no se verificaron. |
 
 ### Interpretación
 
-- **¿Coincidió Cassandra con la hipótesis?** Parcialmente confirmado con los niveles probados: `ONE` permitió leer y escribir en ambos lados; `QUORUM` solo completó las operaciones en el lado de dos nodos; `ALL` falló en ese lado. `ALL` no se probó en `cass3` aislado, así que esa parte de la hipótesis queda sin verificar.
-- **Lectura de la partición:** `cass3` permaneció encendido y atendió por `127.0.0.1`; el aislamiento cortó su conexión con los pares, a diferencia de la caída de procesos del Experimento 1. Con `ONE`, cada lado pudo operar usando una respuesta de réplica. `QUORUM` necesitó dos respuestas y por eso solo funcionó en el lado mayoritario. `ALL` necesitó las tres y falló allí cuando solo había dos disponibles.
-- **Reconciliación y comparación:** Tras reconectar `cass3`, una lectura `ALL` mostró las filas nuevas 21, 23 y 24. Como se escribieron IDs distintos, no se probó un conflicto sobre la misma clave ni quedó determinado el mecanismo exacto de sincronización. La parte de CockroachDB del Experimento 2 está pendiente; la comparación experimental entre ambos motores también queda pendiente.
+- **¿Coincidieron los resultados con las hipótesis?** En CockroachDB el lado mayoritario leyó id 1 y confirmó id 31; esa fila siguió visible tras reconectar. Desde roach3 aislado, la lectura de id 1 falló con `lost quorum` (`SQLSTATE XXUUU`), mientras el INSERT de id 32 no tiene respuesta visible y queda sin resultado confirmado. La consulta posterior sin filas para id 32 no permite determinar qué ocurrió con el intento aislado. En Cassandra, `ONE` permitió operar en ambos lados y `QUORUM` solo completó en el lado mayoritario; `ALL` falló allí y no se probó en el aislado.
+- **Comparación de mecanismos:** CockroachDB requiere mayoría de réplicas votantes por rango para confirmar operaciones del rango; en esta prueba la mayoría pudo confirmar id 31 y la configuración de votantes `{1,2,3}` permaneció tras la reconexión. Cassandra permitió ajustar el mínimo de respuestas mediante `ONE`, `QUORUM` y `ALL`, con los resultados registrados en la tabla. Las operaciones desde el lado aislado de CockroachDB no están verificadas, por lo que la comparación se limita a las respuestas observadas.
+- **Alcance:** La práctica evaluó una partición 2+1 con IDs distintos. No se midió latencia, no se probaron escrituras concurrentes sobre una misma clave y no se verificó el mecanismo exacto de sincronización. La ausencia de id 32 en las consultas posteriores no permite concluir que su escritura aislada haya fallado. Las capturas de las 17:26–17:31 documentan la repetición del escenario después de perder la captura original: el nodo aparece primero `false/false` tras reconectarlo y luego los tres nodos aparecen activos. La interpretación queda limitada a esta topología y a las operaciones probadas.
 ---
 
 ## Opcional — Latencia (parte EL/EC de PACELC)
