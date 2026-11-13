@@ -21,3 +21,17 @@
 * **Problemas encontrados y solución:**
   * *Problema:* Dificultad para encontrar aplicaciones distribuidas que no repetan con las de los compañeros.
   * *Solución:* Busqueda de aplicaciones distribuidas con ayuda de la IA.
+
+   ## Sesión 3 — 12 de noviembre de 2026
+* **Actividades realizadas:**
+  * Inicio de la redacción
+  * Se sube un primer avances en formato .docx
+* **Problemas encontrados y solución:**
+  * Durante esta sección no se encontraron mayores problemas
+
+   ## Sesión 4 — 12 de noviembre de 2026
+* **Actividades realizadas:**
+  * Continuación de la redacción
+  * En esta etapa se realizo un avance de los conceptos
+* **Problemas encontrados y solución:**
+  * Durante esta sección no se encontraron mayores problemas
