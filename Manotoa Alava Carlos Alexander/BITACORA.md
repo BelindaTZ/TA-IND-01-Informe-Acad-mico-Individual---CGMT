@@ -35,3 +35,10 @@
   * En esta etapa se realizo un avance de los conceptos
 * **Problemas encontrados y solución:**
   * Durante esta sección no se encontraron mayores problemas
+
+     ## Sesión 5 — 13 de noviembre de 2026
+* **Actividades realizadas:**
+  * En esta sesión se realizo la diagramación de la arquitectura del sistema TiDB, primero a mano y luego cuando estuvo finalizado se lo paso a draw.io
+* **Problemas encontrados y solución:**
+* *Problema:* Desconocimiento de la arquitectura y sus capas
+* *Solución:* Buscando información se encontró que en la documentación oficial se encuentra su arquitectura.
