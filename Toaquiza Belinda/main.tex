@@ -49,7 +49,7 @@
 \captionsetup{font=small,labelfont=bf}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,babel}
 \usepackage{listings}
 \lstset{
   basicstyle=\ttfamily\small,
@@ -158,18 +158,16 @@ motivo de la elección y organización del informe.}
 % - Componentes y cómo se comunican
 % - Diagrama de arquitectura propio (draw.io o TikZ) y su evolución desde
 %   el esquema a mano (Anexo A)
-\pendiente{Descripción de componentes y comunicación entre ellos.}
+La aplicación cliente envía consultas al nodo de entrada de CockroachDB mediante el protocolo PostgreSQL. La capa SQL analiza y ejecuta las consultas, mientras que la capa de transacciones coordina las operaciones de lectura y escritura. La capa de distribución localiza los rangos de claves y dirige cada escritura a la réplica encargada de ese rango. En el ejemplo del diagrama, esa réplica es también el líder Raft y se comunica con las otras dos para replicar los cambios. La escritura se confirma cuando se replica en al menos dos de las tres réplicas, y cada nodo guarda los cambios en su almacén local Pebble.
 
 \begin{figure}[H]
   \centering
-  % \includegraphics[width=0.9\textwidth]{figuras/arquitectura-cockroachdb.pdf}
-  \marcador{Diagrama de arquitectura propio (draw.io o TikZ)}{5cm}
-  \caption{Arquitectura de \sistemaA{} (elaboración propia).}
+  \resizebox{\textwidth}{!}{\input{figuras/arquitectura-cockroachdb.tex}}
+  \caption{Arquitectura lógica de \sistemaA{} y réplica de un rango en el clúster de tres nodos del experimento (elaboración propia).}
   \label{fig:arquitectura}
 \end{figure}
 
-\pendiente{Explica la Figura~\ref{fig:arquitectura} y cómo evolucionó desde tu
-esquema a mano (Anexo~A).}
+El esquema preliminar mostraba las cinco capas de CockroachDB y un ejemplo de un rango replicado en tres nodos. La versión final amplió esa vista al detallar la función de cada capa y el recorrido de una solicitud desde la aplicación cliente hasta el almacenamiento. También distinguió la réplica líder de las seguidoras y mostró cómo se comunican mediante Raft, cuántas réplicas se necesitan para confirmar una escritura y cómo se guardan los cambios en Pebble en cada nodo.
 
 % =====================================================================
 \section{Análisis con los conceptos de la Unidad 1}
@@ -306,11 +304,9 @@ comunicación y tolerancia a fallos de la sección anterior.}
 \appendix
 \section*{Anexo A. Esquema inicial a mano}
 \addcontentsline{toc}{section}{Anexo A. Esquema inicial a mano}
-% Fotografía del primer bosquejo, con tu nombre y la fecha visibles.
 \begin{figure}[H]
   \centering
-  % \includegraphics[width=0.8\textwidth]{figuras/esquema-a-mano.jpg}
-  \marcador{Fotografía del esquema a mano (nombre y fecha visibles)}{7cm}
+  \includegraphics[width=0.85\textwidth]{figuras/esquema-a-mano.jpeg}
   \caption{Esquema inicial de la arquitectura de \sistemaA{}, dibujado a mano.}
   \label{fig:esquema-mano}
 \end{figure}

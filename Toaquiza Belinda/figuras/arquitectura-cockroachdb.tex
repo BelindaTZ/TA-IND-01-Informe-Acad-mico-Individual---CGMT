@@ -1,0 +1,87 @@
+% Diagrama de arquitectura de CockroachDB (TikZ) — se incluye con \input desde main.tex
+% Requiere en el preámbulo: tikz con las bibliotecas arrows.meta, positioning, fit y calc.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    >=Stealth,
+    cliente/.style={draw=black, fill=gray!12, rounded corners=2pt, text width=6.1cm,
+                    minimum height=0.9cm, inner sep=4pt, align=center},
+    capa/.style={draw=blue!60!black, fill=blue!8, rounded corners=2pt, text width=6.1cm,
+                 minimum height=1.05cm, inner sep=4pt, align=left},
+    capaR/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, text width=6.1cm,
+                  minimum height=1.05cm, inner sep=4pt, align=left},
+    nodo/.style={draw=black!70, dashed, rounded corners=3pt, minimum width=7.2cm,
+                 minimum height=2.1cm},
+    rep/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, text width=3.2cm,
+                minimum height=1.1cm, inner sep=3pt, align=center},
+    peb/.style={draw=green!40!black, fill=green!10, rounded corners=2pt, text width=1.9cm,
+                minimum height=1.1cm, inner sep=3pt, align=center},
+    rango/.style={draw=black!70, fill=gray!8, rounded corners=2pt, minimum width=7.2cm,
+                  minimum height=0.6cm, inner sep=3pt, align=center},
+    flecha/.style={->, thick},
+    raft/.style={<->, thick, dashed, draw=orange!80!black},
+    etiq/.style={font=\scriptsize, align=left, inner sep=2pt},
+    titulo/.style={font=\footnotesize\bfseries, anchor=west}
+]
+% ---------- Cliente ----------
+\node[cliente] (cli) at (0,0) {\textbf{Aplicación cliente}\\ Controlador compatible con PostgreSQL};
+
+% ---------- Panel A: capas lógicas ----------
+\node[capa, below=1.5cm of cli] (sql) {\textbf{SQL} (nodo de entrada)\\ Analiza, optimiza y ejecuta consultas.};
+\node[capa, below=0.9cm of sql] (trx) {\textbf{Transacciones}\\ Coordina operaciones y confirmación atómica.};
+\node[capa, below=0.9cm of trx] (dis) {\textbf{Distribución}\\ Localiza rangos y enruta solicitudes.};
+\node[capaR, below=0.9cm of dis] (rpl) {\textbf{Replicación}\\ Coordina réplicas y consenso Raft por rango.};
+\node[capaR, below=0.9cm of rpl] (alm) {\textbf{Almacenamiento}\\ Pebble conserva las versiones de los datos.};
+
+\node[titulo] (hA) at ([xshift=-3.05cm,yshift=-0.6cm]cli.south) {A. Capas lógicas};
+\node[titulo] (hB) at ([xshift=5.4cm,yshift=-0.6cm]cli.south) {B. Un rango replicado entre nodos (ejemplo)};
+
+\draw[flecha] ([xshift=1.8cm]cli.south) -- ([xshift=1.8cm]sql.north)
+  node[midway, right, etiq, text width=3.1cm] {Envía SQL por el protocolo PostgreSQL};
+\draw[flecha] ([xshift=-1.8cm]sql.south) -- ([xshift=-1.8cm]trx.north)
+  node[midway, right, etiq, text width=4.0cm] {Solicita operaciones clave--valor};
+\draw[flecha] ([xshift=-1.8cm]trx.south) -- ([xshift=-1.8cm]dis.north)
+  node[midway, right, etiq, text width=4.0cm] {Envía operaciones clave--valor};
+\draw[flecha] ([xshift=-1.8cm]dis.south) -- ([xshift=-1.8cm]rpl.north)
+  node[midway, right, etiq, text width=4.7cm] {Dirige la escritura al titular de la concesión};
+\draw[flecha] ([xshift=-1.8cm]rpl.south) -- ([xshift=-1.8cm]alm.north)
+  node[midway, right, etiq, text width=4.7cm] {Aplica cambios confirmados en cada réplica};
+
+% ---------- Panel B: un rango replicado en tres nodos ----------
+\node[nodo] (n2) at ([xshift=9cm,yshift=0.2cm]rpl.center) {};
+\node[nodo, above=0.8cm of n2] (n1) {};
+\node[nodo, below=0.8cm of n2] (n3) {};
+\node[rango, above=0.35cm of n1] (rng) {\textbf{Rango R} = intervalo contiguo de claves};
+
+\foreach \n/\t in {n1/{Nodo 1 (roach1)}, n2/{Nodo 2 (roach2)}, n3/{Nodo 3 (roach3)}}{
+  \node[font=\scriptsize\bfseries, anchor=north west] at ([xshift=0.1cm,yshift=-0.05cm]\n.north west) {\t};
+}
+
+\node[rep] (r1) at ([xshift=-1.2cm,yshift=-0.2cm]n1.center) {Réplica votante de R\\ \textit{Seguidora}};
+\node[rep] (r2) at ([xshift=-1.2cm,yshift=-0.2cm]n2.center) {Réplica votante de R\\ \textit{Líder Raft y leaseholder}};
+\node[rep] (r3) at ([xshift=-1.2cm,yshift=-0.2cm]n3.center) {Réplica votante de R\\ \textit{Seguidora}};
+\node[peb] (p1) at ([xshift=2.5cm,yshift=-0.2cm]n1.center) {Almacén Pebble};
+\node[peb] (p2) at ([xshift=2.5cm,yshift=-0.2cm]n2.center) {Almacén Pebble};
+\node[peb] (p3) at ([xshift=2.5cm,yshift=-0.2cm]n3.center) {Almacén Pebble};
+
+\foreach \r/\p in {r1/p1, r2/p2, r3/p3}{
+  \draw[flecha] (\r.east) -- (\p.west) node[midway, above, etiq] {Persiste};
+}
+
+% Comunicación Raft entre réplicas
+\draw[raft] (r1.south) -- (r2.north) node[midway, right, etiq] {Raft};
+\draw[raft] (r2.south) -- (r3.north) node[midway, right, etiq] {Raft};
+
+% De la capa de replicación al líder del rango
+\draw[flecha] (rpl.east) -- (r2.west);
+
+% ---------- Recuadro del clúster ----------
+\node[draw=black, dashed, rounded corners=6pt, inner sep=0.4cm,
+      fit=(hA)(hB)(sql)(alm)(rng)(n1)(n3),
+      label={[font=\scriptsize\bfseries, anchor=south east]north east:CLÚSTER COCKROACHDB}] (clu) {};
+
+% ---------- Leyenda ----------
+\node[etiq, anchor=north west, text width=15cm] at ([yshift=-0.45cm]clu.south west)
+  {\textbf{Leyenda:} flecha continua = solicitud o aplicación local; flecha discontinua naranja = comunicación Raft;
+   cajas azules = procesamiento y enrutamiento; cajas verdes = replicación y almacenamiento.
+   Los roles de Raft se asignan por rango; el líder mostrado es un ejemplo.};
+\end{tikzpicture}
