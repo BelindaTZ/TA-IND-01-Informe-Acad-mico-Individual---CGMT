@@ -53,3 +53,8 @@ Una entrada por cada día trabajado. Las fechas deben coincidir con los commits 
 - **Problema encontrado:** El arranque de los nodos tomó varios minutos porque se iniciaron de forma secuencial y cada uno debía superar su verificación de salud antes de iniciar el siguiente.
 - **Cómo lo resolví:** Esperé a que terminara el arranque y comprobé el estado con `nodetool status`. Los tres nodos aparecieron como `UN` (activos y normales). La configuración mantiene direcciones IP fijas en la red del clúster y limita la memoria para que los tres nodos puedan ejecutarse en el mismo equipo. Guardé las capturas como `Capturas/cassandra-preparacion-detener-servicios-previos.png` y `Capturas/cassandra-cluster-3-nodos-verificacion-UN.png`.
 - **Tiempo dedicado:** 30 min
+### 2026-11-13
+- **Qué hice:** Amplié la bibliografía con nuevas fuentes para sustentar la comparación entre CockroachDB y Apache Cassandra. Añadí documentación técnica sobre arquitectura, replicación, almacenamiento, comunicación y consistencia, además de publicaciones académicas y un caso de uso industrial. Incorporé también tres artículos en formato PDF a `Referencias/PDFs`.
+- **Problema encontrado:** Las fuentes iniciales no cubrían con suficiente detalle los aspectos técnicos y experimentales que se están analizando en ambos sistemas.
+- **Cómo lo resolví:** Agregué 15 referencias al archivo bibliográfico y organicé los tres nuevos artículos en PDF junto a las fuentes del proyecto para consultarlos durante el análisis.
+- **Tiempo dedicado:** No registrado
