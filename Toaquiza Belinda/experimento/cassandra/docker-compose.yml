@@ -1,0 +1,82 @@
+# Clúster Apache Cassandra de 3 nodos — TA-IND-01
+# Pasos completos en README.md de esta carpeta.
+# Los nodos arrancan de uno en uno: cass2 espera a que cass1 esté listo, y cass3 a cass2.
+# El arranque completo puede tardar varios minutos.
+name: cassandra-lab
+
+x-cass: &cass
+  image: cassandra:5.0
+  networks: [cassnet]
+  healthcheck:
+    test: ["CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES' > /dev/null 2>&1"]
+    interval: 30s
+    timeout: 20s
+    retries: 20
+    start_period: 60s
+
+x-env: &env
+  CASSANDRA_CLUSTER_NAME: lab-cluster
+  CASSANDRA_DC: dc1
+  CASSANDRA_RACK: rack1
+  CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+  CASSANDRA_SEEDS: 172.28.0.11
+  # Memoria reducida para que 3 nodos corran en un solo equipo.
+  MAX_HEAP_SIZE: 512M
+  HEAP_NEWSIZE: 128M
+
+services:
+  cass1:
+    <<: *cass
+    container_name: cass1
+    hostname: cass1
+    environment: *env
+    ports:
+      - "9042:9042"
+    volumes:
+      - cass1-data:/var/lib/cassandra
+    networks:
+      cassnet:
+        ipv4_address: 172.28.0.11
+
+  cass2:
+    <<: *cass
+    container_name: cass2
+    hostname: cass2
+    environment: *env
+    ports:
+      - "9043:9042"
+    volumes:
+      - cass2-data:/var/lib/cassandra
+    depends_on:
+      cass1:
+        condition: service_healthy
+    networks:
+      cassnet:
+        ipv4_address: 172.28.0.12
+
+  cass3:
+    <<: *cass
+    container_name: cass3
+    hostname: cass3
+    environment: *env
+    ports:
+      - "9044:9042"
+    volumes:
+      - cass3-data:/var/lib/cassandra
+    depends_on:
+      cass2:
+        condition: service_healthy
+    networks:
+      cassnet:
+        ipv4_address: 172.28.0.13
+
+networks:
+  cassnet:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  cass1-data:
+  cass2-data:
+  cass3-data:
