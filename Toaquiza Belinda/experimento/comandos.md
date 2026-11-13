@@ -11,14 +11,14 @@
 
 | Dato | CockroachDB | Apache Cassandra |
 |---|---|---|
-| Versión | COMPLETAR | COMPLETAR |
-| Imagen Docker | COMPLETAR | COMPLETAR |
-| Nº de nodos | COMPLETAR | COMPLETAR |
-| Factor de replicación | COMPLETAR | COMPLETAR |
-| Nivel de consistencia usado | COMPLETAR | COMPLETAR |
-| Máquina / SO / Docker | COMPLETAR | COMPLETAR |
+| Versión | COMPLETAR | 5.0.9 (cqlsh) |
+| Imagen Docker | COMPLETAR | `cassandra:5.0` |
+| Nº de nodos | COMPLETAR | 3 (`cass1`, `cass2`, `cass3`), en `dc1` |
+| Factor de replicación | COMPLETAR | 3 en el keyspace `prueba` |
+| Nivel de consistencia usado | COMPLETAR | Preparación: `QUORUM`; pruebas: `ONE`, `QUORUM` y `ALL` |
+| Máquina / SO / Docker | COMPLETAR | PowerShell en `DESKTOP-OCH81AB`; versión de Docker no registrada |
 
-**Cómo levanté los clústeres:** COMPLETAR (comandos o archivo `docker-compose.yml` usado).
+**Cómo levanté los clústeres:** CockroachDB: COMPLETAR. Cassandra: desde `experimento/cassandra`, ejecuté `docker compose up -d`; `docker compose ps` mostró los tres contenedores activos y saludables.
 
 ```
 COMPLETAR: comandos de arranque y salida de `docker ps`
@@ -41,7 +41,7 @@ Captura: `capturas/COMPLETAR.png`
 - **CockroachDB:** Si se detiene un nodo y quedan dos de las tres réplicas votantes disponibles, espero que el clúster pueda confirmar lecturas actuales y escrituras cuando el rango conserve el quórum Raft, aunque una elección de líder o la renovación de la concesión pueda causar una espera. Si se detiene un segundo nodo, espero que las operaciones que requieren ese quórum no se confirmen.
 - **Cassandra:** Con RF=3 y cass1 como coordinador accesible, si se detiene un nodo espero que las operaciones con consistencia `ONE` y `QUORUM` puedan completarse, mientras que `ALL` no. Si se detienen dos nodos, espero que solo `ONE` pueda completarse desde la única réplica disponible; `QUORUM` y `ALL` deberían fallar o expirar por falta de respuestas. Comprobaré por separado lecturas y escrituras, porque cada operación puede producir un resultado o tiempo de espera distinto. Esta predicción se basa en los niveles de consistencia descritos por `apacheCassandraDynamo`.
 
-**Registro:** Estas hipótesis se formularon antes de los ensayos y se incorporan ahora al documento desde las notas previas. La hipótesis de Cassandra queda pendiente de contrastar cuando se ejecute ese ensayo.
+**Registro:** Las hipótesis se formularon antes de los ensayos. Los resultados de Cassandra documentados a continuación permiten contrastar la predicción para ese sistema.
 
 ### Procedimiento — CockroachDB
 
@@ -55,17 +55,18 @@ Captura: `capturas/COMPLETAR.png`
 
 ### Procedimiento — Cassandra
 
-Este ensayo aún está **pendiente de ejecución**. Mantén cass1 activo como coordinador y prueba cada nivel por separado. Cassandra puede tardar unos segundos en reflejar `DN` en `nodetool status`; registra la salida después de que el estado se estabilice. Usa una clave distinta en cada intento para distinguir los datos nuevos. Ejecuta `CONSISTENCY <nivel>;` antes de cada lectura o escritura y anota resultado, error o tiempo de espera.
+La ejecución se realizó desde PowerShell con Cassandra 5.0.9 en tres nodos (`cass1`, `cass2`, `cass3`) del datacenter `dc1`; el keyspace `prueba` usó factor de replicación 3. En cada etapa se cambió el nivel con `CONSISTENCY` y se registraron las respuestas inmediatas y las lecturas posteriores por separado.
 
-| Paso | Qué hago | Comandos de referencia | Captura |
+| Paso | Qué hice | Comando / evidencia | Captura |
 |---|---|---|---|
-| 1 | Registro versión, estado inicial y datos base | `Get-Date`; `docker exec cass1 nodetool version`; `docker exec cass1 nodetool status`; desde `cqlsh`: `CONSISTENCY QUORUM; SELECT * FROM prueba.datos;` | Pendiente |
-| 2 | Detengo cass2; espero a que aparezca `DN` y pruebo lectura y escritura con `ONE`, `QUORUM` y `ALL` | `docker stop cass2`; `docker exec cass1 nodetool status`; desde `cqlsh`, para cada nivel: `CONSISTENCY <nivel>; INSERT INTO prueba.datos (id, valor) VALUES (<id_unico>, '<nivel>_un_nodo'); SELECT * FROM prueba.datos WHERE id = <id_unico>;` | Pendiente |
-| 3 | Detengo cass3; espero a que se refleje la segunda caída y repito las operaciones por nivel | `docker stop cass3`; `docker exec cass1 nodetool status`; desde `cqlsh`, repetir el bloque anterior con nuevos `<id_unico>` y el sufijo `dos_nodos` | Pendiente |
-| 4 | Inicio cass2 y cass3, verifico que vuelvan a `UN` y leo con `ALL` las claves de prueba | `docker start cass2 cass3`; `docker exec cass1 nodetool status`; desde `cqlsh`: `CONSISTENCY ALL; SELECT * FROM prueba.datos WHERE id IN (<ids_de_prueba>);` | Pendiente |
+| 1 | Levanté el clúster, comprobé versión y estado de los nodos | `docker compose up -d`; `docker compose ps`; `docker exec -it cass1 nodetool status`; `docker exec cass1 nodetool version` | [Línea base: estado y versión](../Capturas/2026-11-13_cassandra_e1_01_linea_base_estado_version.png) |
+| 2 | Preparé el keyspace, tabla y filas iniciales con `QUORUM` | `CREATE KEYSPACE prueba WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 3};`; creación de `prueba.datos`; `CONSISTENCY QUORUM`; inserción y lectura de IDs 1–3 | [Datos base](../Capturas/2026-11-13_cassandra_e1_02_datos_base_consistency_quorum.png) |
+| 3 | Consulté las réplicas de la clave 1 | `docker exec cass1 nodetool getendpoints prueba datos 1` | [Endpoints de las réplicas](../Capturas/2026-11-13_cassandra_e1_03_endpoints_replicas_datos.png) |
+| 4 | Detuve `cass2`, confirmé su estado `DN` y probé operaciones con un nodo caído | `docker stop cass2`; `docker compose ps -a`; `docker exec -it cass1 nodetool status`; en `cqlsh`, lecturas/escrituras con `ONE`, `QUORUM` y `ALL` | [cass2 detenido y operaciones](../Capturas/2026-11-13_cassandra_e1_04_cass2_detenido_estado_y_pruebas.png); [lecturas posteriores](../Capturas/2026-11-13_cassandra_e1_05_un_nodo_verificacion_lecturas.png) |
+| 5 | Detuve `cass3` y repetí consultas y escrituras por nivel con un nodo vivo | `docker stop cass3`; `docker exec -it cass1 nodetool status`; en `cqlsh`, operaciones con `ONE`, `QUORUM` y `ALL` | [Dos nodos detenidos y respuestas](../Capturas/2026-11-13_cassandra_e1_06_dos_nodos_estado_y_consistency.png) |
+| 6 | Inicié `cass2` y `cass3`, observé la convergencia del estado y consulté los datos con `ALL` | `docker start cass2 cass3`; `docker compose ps -a`; `docker exec -it cass1 nodetool status`; `CONSISTENCY ALL; SELECT * FROM prueba.datos;` | [Recuperación y lectura final](../Capturas/2026-11-13_cassandra_e1_07_recuperacion_tres_un_y_lectura_all.png) |
 
-No registres las respuestas esperadas como resultados: completa la sección siguiente solo con salidas observadas y capturas del ensayo.
-
+Las capturas 04 y 06 contienen tanto el estado de los nodos como parte de las operaciones de CQL; la captura 07 reúne el primer estado tras el arranque, el estado posterior con los tres nodos `UN` y la lectura final con `ALL`.
 ### Resultados
 
 **CockroachDB**
@@ -194,24 +195,52 @@ Después, node status consultado desde roach2 volvió a mostrar address=roach1:2
 A las 13:38:17, node status mostró los tres nodos con is_available=true e is_live=true. Así se distingue la recuperación SQL tras iniciar los nodos del reinicio posterior de roach1, que corrigió su estado en node status. Capturas: ../Capturas/2026-11-13_cockroachdb_e1_06_roach1_estado_inconsistente_logs.png, ../Capturas/2026-11-13_cockroachdb_e1_07_reinicio_roach1_consulta_final_rango88.png y ../Capturas/2026-11-13_cockroachdb_e1_08_estado_final_tras_reinicio_roach1.png.
 **Cassandra**
 
-Pendiente de ejecutar el Experimento 1 para Cassandra. Registrar aquí los comandos efectivamente ejecutados, sus salidas, los errores o tiempos de espera y las capturas. No hay resultados todavía.
+#### Línea base — 14:31:08 a 14:44:51
 
-```
-COMPLETAR: comandos y salidas reales
-```
+Desde PowerShell inicié el clúster con `docker compose up -d`. `docker compose ps` mostró `cass1`, `cass2` y `cass3` saludables; `nodetool status` reportó los tres como `UN` en `dc1`. La imagen usada fue `cassandra:5.0`; `nodetool version` y el banner de `cqlsh` indicaron la versión exacta Cassandra 5.0.9. Preparé el keyspace `prueba` con `NetworkTopologyStrategy` y `dc1: 3`, la tabla `prueba.datos` y las filas iniciales `(1, 'a')`, `(2, 'b')` y `(3, 'c')`. Con `CONSISTENCY QUORUM`, la consulta devolvió las tres filas. `nodetool getendpoints prueba datos 1` mostró como endpoints `172.28.0.12`, `172.28.0.11` y `172.28.0.13`.
+
+Capturas: [estado y versión](../Capturas/2026-11-13_cassandra_e1_01_linea_base_estado_version.png), [datos base](../Capturas/2026-11-13_cassandra_e1_02_datos_base_consistency_quorum.png) y [endpoints](../Capturas/2026-11-13_cassandra_e1_03_endpoints_replicas_datos.png).
+
+#### Un nodo detenido — 15:00:36
+
+`docker stop cass2` devolvió `cass2`. `docker compose ps -a` mostró `cass2` detenido y `nodetool status` lo identificó como `DN` en `172.28.0.12`; `cass1` (`172.28.0.11`) y `cass3` (`172.28.0.13`) seguían `UN`. `cqlsh` continuó accesible a través de `cass1`.
+
+- Con `ONE`, `SELECT * FROM prueba.datos WHERE id = 1;` devolvió `1 | a`. La escritura de `(4, 'un_caido_one')` no mostró error inmediato; una lectura posterior con `QUORUM` confirmó la fila 4.
+- Con `QUORUM`, otra lectura de la clave 1 devolvió `1 | a`. La escritura de `(5, 'un_caido_quorum')` no mostró error inmediato; la lectura posterior con `QUORUM` confirmó la fila 5.
+- Con `ALL`, la lectura de la clave 1 y la escritura de `(6, 'un_caido_all')` devolvieron `NoHostAvailable` con `Unavailable`, `required_replicas: 3` y `alive_replicas: 2`. La captura muestra el detalle `Cannot achieve consistency level ALL`; el intento de escritura de la fila 6, por tanto, sí quedó registrado como fallido.
+
+Capturas: [estado y pruebas con cass2 detenido](../Capturas/2026-11-13_cassandra_e1_04_cass2_detenido_estado_y_pruebas.png) y [lecturas posteriores de las filas 4 y 5](../Capturas/2026-11-13_cassandra_e1_05_un_nodo_verificacion_lecturas.png).
+
+#### Dos nodos detenidos — 15:30:59
+
+Después de detener `cass3`, `nodetool status` mostró `cass1` (`172.28.0.11`) como único `UN`; `cass2` (`172.28.0.12`) y `cass3` (`172.28.0.13`) aparecieron `DN`. Se pudo abrir `cqlsh` por `cass1`.
+
+- Con `ALL`, tanto `SELECT * FROM prueba.datos;` como la lectura de la clave 1 devolvieron `Unavailable`: se requerían 3 réplicas y había 1 disponible. La escritura de `(9, 'dos_caidos_all')` también devolvió error con `required_replicas: 3`, `alive_replicas: 1`.
+- Con `QUORUM`, la lectura de la clave 1 falló con `required_replicas: 2`, `alive_replicas: 1`. La escritura de `(8, 'dos_caidos_quorum')` también falló con ese requisito de dos respuestas.
+- Con `ONE`, la lectura de la clave 1 devolvió `1 | a`. La escritura de `(7, 'dos_caidos_one')` no mostró error inmediato y la lectura siguiente devolvió `7 | dos_caidos_one`.
+
+La evidencia permite distinguir las operaciones que Cassandra rechazó por falta de respuestas de las que completó en el nivel `ONE`. Captura: [dos nodos detenidos, estado y respuestas de consistencia](../Capturas/2026-11-13_cassandra_e1_06_dos_nodos_estado_y_consistency.png).
+
+#### Recuperación y lectura final — desde 15:34:50
+
+`docker start cass2 cass3` devolvió ambos nombres. En la primera consulta inmediata a `nodetool status`, `cass1` aparecía `UN` y los otros dos aún `DN`. Después, `docker compose ps -a` mostró los tres contenedores `Up (healthy)` y una nueva consulta de `nodetool status` mostró los tres nodos `UN`, sin que se vea otro reinicio. La indicación `Up About a minute` es el tiempo aproximado desde el arranque de los contenedores, no una medición exacta de recuperación del clúster.
+
+Con `CONSISTENCY ALL`, `SELECT * FROM prueba.datos;` terminó y devolvió seis filas: IDs 1, 2, 3, 4, 5 y 7. No aparecieron los IDs 6, 8 ni 9; los intentos de escritura correspondientes ya muestran errores en las capturas de las etapas previas. La lectura final confirma que la fila 7 era visible después de la recuperación, pero no identifica por sí misma el mecanismo de sincronización de las réplicas.
+
+Captura: [primer estado tras el arranque, tres nodos UN y lectura final con ALL](../Capturas/2026-11-13_cassandra_e1_07_recuperacion_tres_un_y_lectura_all.png).
 
 | Situación | CockroachDB | Cassandra |
 |---|---|---|
-| Todos los nodos activos | Tres nodos disponibles; rango 87 con votantes {1,2,3}. | COMPLETAR |
-| 1 nodo caído | Lectura y escritura continuaron con roach2 detenido; la fila 4 persistió. | COMPLETAR |
-| 2 nodos caídos | Se observó replica unavailable al consultar; la salida con SQLSTATE XXUUU aparece parcialmente en la captura 04. | COMPLETAR |
-| Tras recuperar los nodos | Se reportó la recuperación de lecturas y escrituras; tras reiniciar roach1, las consultas finales mostraron las filas 1, 2, 3, 4 y 6, y node status confirmó los tres nodos activos. | COMPLETAR |
+| Todos los nodos activos | Tres nodos disponibles; rango 87 con votantes {1,2,3}. | Tres nodos `UN` en `dc1`, RF=3; filas iniciales 1–3. Los endpoints de la clave 1 fueron 172.28.0.12, .11 y .13. |
+| 1 nodo caído | Lectura y escritura continuaron con roach2 detenido; la fila 4 persistió. | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 4 y 5 verificadas después; `ALL` lectura y escritura fallaron (`required_replicas=3`, `alive_replicas=2`), incluida la fila 6. |
+| 2 nodos caídos | Se observó replica unavailable al consultar; la salida con SQLSTATE XXUUU aparece parcialmente en la captura 04. | `ONE`: lectura de id 1 y escritura/lectura de id 7 completadas. `QUORUM` falló (2 requeridas, 1 viva); `ALL` falló (3 requeridas, 1 viva), también en escrituras de ids 8 y 9. |
+| Tras recuperar los nodos | Se reportó la recuperación de lecturas y escrituras; tras reiniciar roach1, las consultas finales mostraron las filas 1, 2, 3, 4 y 6, y node status confirmó los tres nodos activos. | Primer status: 1 `UN`, 2 `DN`; después, contenedores saludables y 3 `UN` sin reinicio adicional. `ALL` leyó seis filas (1, 2, 3, 4, 5 y 7). |
 
 ### Interpretación
 
-- ¿Coincidieron los resultados con las hipótesis planteadas? Pendiente de analizar los resultados frente a cada predicción.
-- Relación con CAP/PACELC y con la tolerancia a fallos: con un nodo detenido, el clúster conservó el quórum y permitió leer y escribir. Al detener dos nodos, la mayoría dejó de estar disponible y se reportó pérdida de quórum al abrir SQL. Estos resultados documentan la tolerancia a fallos del clúster en esta prueba; no permiten por sí solos concluir sobre una partición de red.
-
+- **¿Coincidieron los resultados con las hipótesis?** Sí, en los comportamientos observados. CockroachDB mantuvo las operaciones cuando el rango conservó mayoría y dejó de confirmar la consulta al perderla. Cassandra, con un nodo detenido, completó lecturas y escrituras en `ONE` y `QUORUM`, mientras `ALL` falló por exigir tres respuestas. Con dos nodos detenidos, `ONE` permitió leer y escribir en la única réplica disponible; `QUORUM` y `ALL` fallaron por no alcanzar dos y tres respuestas, respectivamente.
+- **Comparación de mecanismos:** CockroachDB coordina cada rango mediante réplicas votantes Raft y requiere mayoría para confirmar operaciones que dependen de ese rango. Cassandra permite escoger el número mínimo de respuestas mediante el nivel CQL: en esta prueba `ONE` mantuvo acceso a una réplica aunque la mayoría de nodos estuviera caída; `QUORUM` y `ALL` aplicaron requisitos mayores. Por eso la disponibilidad observada con dos nodos detenidos fue distinta, aunque ambos sistemas operaban con tres réplicas.
+- **Recuperación y alcance:** En Cassandra, el primer `nodetool status` tras iniciar `cass2` y `cass3` todavía mostraba dos `DN`; después, sin otro reinicio visible, el estado convergió a tres `UN` y la consulta con `ALL` devolvió las seis filas presentes. Esto no demuestra por sí solo qué mecanismo sincronizó las réplicas ni cuánto tardó exactamente la recuperación. El ensayo mide disponibilidad ante caídas de nodos; no prueba particiones de red ni permite concluir sobre el intercambio latencia-consistencia de PACELC.
 ---
 
 ## Experimento 2 — Partición de red (CAP)
