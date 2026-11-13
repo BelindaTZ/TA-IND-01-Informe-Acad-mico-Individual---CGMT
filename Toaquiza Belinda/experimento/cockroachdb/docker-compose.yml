@@ -1,14 +1,15 @@
 # Clúster CockroachDB de 3 nodos (modo seguro, certificados) — TA-IND-01
 # Los certificados viven en volúmenes de Docker (NO se suben al repositorio).
 # Pasos completos en README.md de esta carpeta.
+# Nota: no se fija --listen-addr, así cada nodo escucha en todas sus interfaces (incluida
+# localhost). Así, al aislar un nodo de la red en el experimento 2, aún puedes conectarte
+# a él desde dentro de su contenedor con --host=localhost:26257.
 name: crdb-lab
-
+ 
 x-roach: &roach
-  # Cuando confirmes tu versión exacta (docker exec roach1 cockroach version),
-  # reemplaza "latest" por ese tag para que el experimento sea reproducible.
   image: cockroachdb/cockroach:v26.4.0
   networks: [crdbnet]
-
+ 
 services:
   roach1:
     <<: *roach
@@ -18,7 +19,6 @@ services:
       start
       --certs-dir=/certs
       --advertise-addr=roach1:26257
-      --listen-addr=roach1:26257
       --http-addr=roach1:8080
       --join=roach1:26257,roach2:26257,roach3:26257
       --store=/cockroach/cockroach-data
@@ -28,7 +28,7 @@ services:
     volumes:
       - roach1-data:/cockroach/cockroach-data
       - certs:/certs:ro
-
+ 
   roach2:
     <<: *roach
     container_name: roach2
@@ -37,7 +37,6 @@ services:
       start
       --certs-dir=/certs
       --advertise-addr=roach2:26257
-      --listen-addr=roach2:26257
       --http-addr=roach2:8080
       --join=roach1:26257,roach2:26257,roach3:26257
       --store=/cockroach/cockroach-data
@@ -47,7 +46,7 @@ services:
     volumes:
       - roach2-data:/cockroach/cockroach-data
       - certs:/certs:ro
-
+ 
   roach3:
     <<: *roach
     container_name: roach3
@@ -56,7 +55,6 @@ services:
       start
       --certs-dir=/certs
       --advertise-addr=roach3:26257
-      --listen-addr=roach3:26257
       --http-addr=roach3:8080
       --join=roach1:26257,roach2:26257,roach3:26257
       --store=/cockroach/cockroach-data
@@ -66,10 +64,10 @@ services:
     volumes:
       - roach3-data:/cockroach/cockroach-data
       - certs:/certs:ro
-
+ 
 networks:
   crdbnet:
-
+ 
 volumes:
   roach1-data:
   roach2-data:
@@ -77,3 +75,4 @@ volumes:
   certs:
     external: true
     name: crdb-certs
+ 
