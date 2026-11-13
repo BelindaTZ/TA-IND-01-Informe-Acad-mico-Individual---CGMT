@@ -247,24 +247,32 @@ Captura: [primer estado tras el arranque, tres nodos UN y lectura final con ALL]
 
 **Concepto de la Unidad 1:** teorema CAP (consistencia vs. disponibilidad ante una partición).
 
-**Pregunta:** COMPLETAR
+**Pregunta:** ¿Cómo afecta una partición de red 2+1 las lecturas y escrituras de Cassandra según el nivel de consistencia, y qué datos pueden leerse después de reconectar el nodo aislado?
 
 **Hipótesis formuladas antes de los ensayos**
 
 - **E2, CockroachDB:** Si aíslo una réplica y las otras dos siguen comunicándose, espero que el lado mayoritario pueda confirmar una escritura cuando el rango mantenga quórum; una escritura nueva desde el lado aislado no debería confirmarse. Registraré también si las lecturas terminan o quedan esperando.
 - **E2, Cassandra:** En una partición 2+1, si el cliente puede acceder a un coordinador en cada lado, espero que `ONE` pueda operar en ambos lados; `QUORUM` debería completarse solo en el lado con dos réplicas y `ALL` no debería completarse en ninguno. Con `ONE`, una lectura podría devolver una versión anterior. La observación depende de la conectividad real del cliente y de las réplicas, que verificaré durante la prueba. Predicción basada en `apacheCassandraDynamo`, niveles de consistencia.
 
-**Registro:** Hipótesis formuladas antes de ejecutar el experimento; completar con la fecha y las condiciones previstas.
+**Registro:** La hipótesis de Cassandra se formuló antes de ejecutar este experimento. La parte de CockroachDB queda pendiente.
 
-### Procedimiento (repetir en cada sistema)
+### Procedimiento — Cassandra
 
-| Paso | Qué hago | Comando | Captura |
+Cassandra 5.0.9 se ejecutó en Docker Compose con tres nodos en `dc1`, RF=3 para `prueba.datos`. Aislé `cass3` de `cassandra-lab_cassnet` conservando el proceso activo y lo consulté por `127.0.0.1`.
+
+| Paso | Qué hice | Comandos y observaciones | Captura |
 |---|---|---|---|
-| 1 | Verifico el estado inicial y la hora (`date`) | COMPLETAR | COMPLETAR |
-| 2 | Aíslo un nodo del resto (por ejemplo con `docker network disconnect <red> <nodo>`) | COMPLETAR | COMPLETAR |
-| 3 | Intento escribir y leer desde el lado aislado | COMPLETAR | COMPLETAR |
-| 4 | Intento escribir y leer desde el lado con mayoría | COMPLETAR | COMPLETAR |
-| 5 | Reconecto el nodo (`docker network connect <red> <nodo>`) y verifico qué pasó con los datos | COMPLETAR | COMPLETAR |
+| 1 | Confirmé el aislamiento de cass3 | A las 16:25:51 `docker compose ps` aún mostraba cass3 `Up (healthy)`, mientras `nodetool status` mostraba `172.28.0.13` como `DN` y los otros nodos `UN`; `docker inspect cass3 --format '{{range $nombre, $red := .NetworkSettings.Networks}}{{$nombre}} {{$red.IPAddress}}{{println}}{{end}}'` no listó redes para cass3. A las 16:26:00 repetí `docker network disconnect $red cass3`; Docker indicó que el contenedor ya no estaba conectado a `cassandra-lab_cassnet`. | [cass3 aislado y desconexión confirmada](../Capturas/2026-11-13_cassandra_e2_01_cass3_aislado_estado_confirmacion.png) |
+| 2 | Probé lecturas y escrituras desde cass3 aislado | `docker exec -it cass3 cqlsh 127.0.0.1 9042`; con `ONE`, leí id 1 e inserté y leí id 21; con `QUORUM`, intenté leer id 1 e insertar id 22. | [Lado aislado: ONE y QUORUM](../Capturas/2026-11-13_cassandra_e2_02_lado_aislado_one_quorum.png) |
+| 3 | Probé lecturas y escrituras desde el lado de cass1 y cass2 | `docker exec -it cass1 cqlsh`; con `ONE` y `QUORUM`, leí id 1 e inserté ids 23 y 24; con `ALL`, intenté leer id 1 e insertar id 25. | [Lado mayoritario: ONE, QUORUM y ALL](../Capturas/2026-11-13_cassandra_e2_03_lado_mayoritario_one_quorum_all.png) |
+| 4 | Reconecté cass3 con su IP original y comprobé el estado del clúster | A las 16:28:51 ejecuté `docker network connect --ip $ipCass3 $red cass3`, con `$ipCass3='172.28.0.13'` y `$red='cassandra-lab_cassnet'`; después `docker exec cass1 nodetool status` mostró tres nodos `UN`. | [Reconexión y estado de tres nodos UN](../Capturas/2026-11-13_cassandra_e2_04_reconexion_tres_nodos_un_y_lectura_all.png) |
+| 5 | Verifiqué la visibilidad posterior con ALL | Desde `cqlsh` en cass1 ejecuté `CONSISTENCY ALL; SELECT * FROM prueba.datos WHERE id IN (21, 22, 23, 24, 25, 26);`. La salida mostró los IDs 21, 23 y 24. | [Lectura ALL incluida en la captura de reconexión](../Capturas/2026-11-13_cassandra_e2_04_reconexion_tres_nodos_un_y_lectura_all.png) |
+
+La última imagen reúne la reconexión, el estado final de tres nodos `UN` y la lectura `ALL`; no existe una captura separada de esa consulta. El tiempo exacto que tardó Cassandra en marcar `cass3` como `DN` no se midió.
+
+### Procedimiento — CockroachDB
+
+Pendiente de ejecutar la parte del Experimento 2 para CockroachDB. No se incluye aquí una comparación experimental entre los dos motores.
 
 ### Resultados
 
@@ -276,21 +284,48 @@ COMPLETAR: comandos y salidas reales
 
 **Cassandra**
 
-```
-COMPLETAR: comandos y salidas reales
-```
+#### cass3 aislado — 16:25:51 y 16:26:00
+
+A las 16:25:51 `docker compose ps` todavía mostraba el contenedor `cass3` como `Up (healthy)`, pero `docker exec cass1 nodetool status` ya reportaba la IP original `172.28.0.13` como `DN`; `cass1` y `cass2` figuraban `UN`. La inspección de las redes de `cass3` no listó ninguna red. A las 16:26:00, al repetir `docker network disconnect $red cass3`, Docker respondió: `Error response from daemon: container ... is not connected to network cassandra-lab_cassnet`. Ese mensaje confirmó que ya estaba aislado. No se midió cuánto tardó la detección.
+
+El proceso Cassandra de `cass3` siguió encendido y aceptó la conexión local `docker exec -it cass3 cqlsh 127.0.0.1 9042`:
+
+- Con `ONE`, `SELECT * FROM prueba.datos WHERE id = 1;` devolvió `1 | a`. El `INSERT` de `(21, 'particion_aislado_one')` volvió al prompt sin error; la lectura posterior de id 21 devolvió esa fila.
+- Con `QUORUM`, la lectura de id 1 y el `INSERT` de `(22, 'particion_aislado_quorum')` devolvieron `NoHostAvailable` con `Unavailable`, `required_replicas: 2` y `alive_replicas: 1`.
+- `ALL` no se probó desde el lado aislado.
+
+Capturas: [estado del aislamiento](../Capturas/2026-11-13_cassandra_e2_01_cass3_aislado_estado_confirmacion.png) y [operaciones locales ONE/QUORUM](../Capturas/2026-11-13_cassandra_e2_02_lado_aislado_one_quorum.png).
+
+#### Lado mayoritario — dos nodos conectados
+
+Desde `cqlsh` en `cass1`, las lecturas de id 1 con `ONE` y `QUORUM` devolvieron `1 | a`. Los `INSERT` de `(23, 'particion_mayoria_one')` y `(24, 'particion_mayoria_quorum')` regresaron al prompt sin error visible. Con `ALL`, tanto la lectura de id 1 como el `INSERT` de `(25, 'particion_mayoria_all')` devolvieron `Unavailable`, con `required_replicas: 3` y `alive_replicas: 2`.
+
+Captura: [pruebas desde el lado mayoritario](../Capturas/2026-11-13_cassandra_e2_03_lado_mayoritario_one_quorum_all.png).
+
+#### Reconexión y lectura posterior — 16:28:51
+
+Reconecté `cass3` usando su IP original `172.28.0.13`. `nodetool status` mostró los tres nodos `UN`. Después, `CONSISTENCY ALL; SELECT * FROM prueba.datos WHERE id IN (21, 22, 23, 24, 25, 26);` devolvió exactamente:
+
+    21 | particion_aislado_one
+    23 | particion_mayoria_one
+    24 | particion_mayoria_quorum
+    (3 rows)
+
+Las escrituras de IDs 21, 23 y 24 quedaron visibles tras la reconexión. Las operaciones de IDs 22 y 25 habían devuelto error durante la partición; la escritura del ID 26 no se intentó, aunque se incluyó en la búsqueda final. Como se usaron claves distintas, la evidencia muestra disponibilidad por nivel y visibilidad posterior, pero no prueba la reconciliación de escrituras concurrentes sobre una misma clave ni identifica el mecanismo exacto de sincronización.
+
+Captura: [reconexión, tres nodos UN y lectura final con ALL](../Capturas/2026-11-13_cassandra_e2_04_reconexion_tres_nodos_un_y_lectura_all.png).
 
 | Situación | CockroachDB | Cassandra |
 |---|---|---|
-| Lado aislado: ¿acepta escrituras? ¿lecturas? | COMPLETAR | COMPLETAR |
-| Lado con mayoría: ¿acepta escrituras? ¿lecturas? | COMPLETAR | COMPLETAR |
-| Tras reconectar: ¿datos consistentes? ¿cómo se reconcilian? | COMPLETAR | COMPLETAR |
+| Lado aislado: ¿acepta escrituras? ¿lecturas? | Pendiente de medir | Con `ONE`, lectura de id 1 y escritura/lectura de id 21 funcionaron por `127.0.0.1`; `QUORUM` lectura y escritura fallaron (2 requeridas, 1 viva); `ALL` no se probó. |
+| Lado con mayoría: ¿acepta escrituras? ¿lecturas? | Pendiente de medir | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 23 y 24 sin error visible; `ALL` lectura y escritura fallaron (3 requeridas, 2 vivas). |
+| Tras reconectar: ¿datos consistentes? ¿cómo se reconcilian? | Pendiente de medir | Los tres nodos quedaron `UN`; `ALL` devolvió ids 21, 23 y 24. La reconciliación de escrituras concurrentes y el mecanismo de sincronización no se verificaron. |
 
 ### Interpretación
 
-- ¿Coincidieron los resultados con las hipótesis planteadas? COMPLETAR
-- Qué priorizó cada sistema (consistencia o disponibilidad) y cómo se refleja en CAP: COMPLETAR
-
+- **¿Coincidió Cassandra con la hipótesis?** Parcialmente confirmado con los niveles probados: `ONE` permitió leer y escribir en ambos lados; `QUORUM` solo completó las operaciones en el lado de dos nodos; `ALL` falló en ese lado. `ALL` no se probó en `cass3` aislado, así que esa parte de la hipótesis queda sin verificar.
+- **Lectura de la partición:** `cass3` permaneció encendido y atendió por `127.0.0.1`; el aislamiento cortó su conexión con los pares, a diferencia de la caída de procesos del Experimento 1. Con `ONE`, cada lado pudo operar usando una respuesta de réplica. `QUORUM` necesitó dos respuestas y por eso solo funcionó en el lado mayoritario. `ALL` necesitó las tres y falló allí cuando solo había dos disponibles.
+- **Reconciliación y comparación:** Tras reconectar `cass3`, una lectura `ALL` mostró las filas nuevas 21, 23 y 24. Como se escribieron IDs distintos, no se probó un conflicto sobre la misma clave ni quedó determinado el mecanismo exacto de sincronización. La parte de CockroachDB del Experimento 2 está pendiente; la comparación experimental entre ambos motores también queda pendiente.
 ---
 
 ## Opcional — Latencia (parte EL/EC de PACELC)
