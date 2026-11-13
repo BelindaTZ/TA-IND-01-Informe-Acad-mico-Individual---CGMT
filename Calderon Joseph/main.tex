@@ -8,13 +8,13 @@
 \usepackage[hidelinks]{hyperref}
 \Urlmuskip=0mu plus 1mu
 \addbibresource{Referencias/referencias.bib}
-\DefineBibliographyStrings{spanish}{artno = {art\adddot}}
+
 \captionsetup{hypcap=false}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
 \raggedbottom
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
-\newcommand{\repositorio}{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT}
+
 \newcommand{\evidencia}[3]{%
   \begin{center}
     \includegraphics[width=\linewidth,height=0.63\textheight,keepaspectratio]{#1}
@@ -22,31 +22,58 @@
   \end{center}}
 \begin{document}
 \hypersetup{pageanchor=false}
+
 \begin{titlepage}
 \centering
 
 {\Large Universidad Técnica Estatal de Quevedo\par}
-\vspace{0.5em}
+
+\vspace{0.6em}
+
 Facultad de Ciencias de la Computación y Diseño Digital\\
 Carrera de Software
 
 \vfill
 
 {\large Aplicaciones Distribuidas (ISR-701)\par}
+
+\vspace{0.5em}
+
 {\large TA-IND-01 --- Informe Académico Individual\par}
 
-\vspace{1.3em}
-{\LARGE\bfseries Análisis crítico de etcd\\
+\vspace{1.5em}
+
+{\LARGE\bfseries
+Análisis crítico de etcd\\[0.3em]
 y comparación con Apache ZooKeeper\par}
 
 \vfill
 
 {\large Calderón Saltos Joseph Alexander\par}
-Fecha: 12/11/2026
+
+\vspace{0.5em}
+
+Paralelo: A\\
+Fecha: 12 de noviembre de 2026
+
 
 \vspace{2em}
+
+{\small\bfseries Repositorio GitHub\par}
+
+\vspace{0.5em}
+
+\href{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT/tree/main/Calderon\%20Joseph}{%
+  \resizebox{0.95\textwidth}{!}{%
+    \texttt{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT/tree/main/Calderon\%20Joseph}%
+  }%
+}
+\par
+
 \vfill
+
 \end{titlepage}
+
 \hypersetup{pageanchor=true}
 
 \section*{Resumen}
@@ -119,10 +146,19 @@ Recuperación (fig.~\ref{fig:regreso}) & \texttt{docker compose start etcd3}, es
 El cambio del término 3 al 4 y el reemplazo de \texttt{etcd3} por \texttt{etcd1} son evidencia de una elección. El segundo \texttt{OK}, seguido de una lectura por otro endpoint, muestra que la mayoría confirmó un dato nuevo con el líder inicial detenido. Tras el reinicio, los índices aplicados iguales aportan evidencia de que el miembro reincorporado alcanzó la posición observada en los demás. La lectura desde ese endpoint comprueba que podía servir el valor creado durante su ausencia.
 
 El primer intercambio muestra acceso uniforme y una vista común de la clave. La segunda escritura comprueba progreso con quórum tras una elección. Las capturas son observaciones puntuales. El intervalo entre ellas incluye tiempo de intervención manual y no sirve para estimar la duración de la elección. \texttt{docker compose stop} provoca una detención controlada. Los tres procesos comparten equipo y red virtual. El ensayo cubre la pérdida de un proceso y su retorno, con alcance distinto al de una partición, una pérdida de disco o un fallo del anfitrión.
-
 \section{Ejemplos del entorno del estudiante}
-\textit{Pendientes dos observaciones personales confirmadas por el estudiante.}
-% En cada ejemplo indicar sistema, situación observada y concepto de la Unidad 1.
+
+\subsection{Sistema de Gestión Académica de la UTEQ}
+
+En el SGA de la UTEQ subo tareas y consulto las actividades de mis asignaturas. Después de realizar una entrega, reviso su estado para comprobar que haya quedado registrada. Aunque acceda nuevamente a la plataforma, espero encontrar la información que guardé anteriormente.
+
+Esta situación se relaciona con la transparencia de acceso y la consistencia de los datos. Como estudiante, me interesa que la entrega quede registrada y pueda consultarla después, sin tener que conocer los servidores que utiliza la plataforma. Sin embargo, esta experiencia no permite determinar cómo almacena o replica la información el SGA.
+
+\subsection{WhatsApp}
+
+En WhatsApp puedo enviar un mensaje y observar sus estados de envío, entrega y lectura. Estos indicadores no siempre cambian al mismo tiempo, ya que dependen de las condiciones de comunicación y de la disponibilidad del destinatario.
+
+Lo relaciono con la comunicación asíncrona en los sistemas distribuidos. El emisor y el receptor no necesitan estar interactuando al mismo tiempo para intercambiar mensajes. Los indicadores permiten conocer parte del estado de la comunicación, aunque no muestran cómo se procesa internamente cada mensaje.
 
 \section{Análisis comparativo con Apache ZooKeeper}
 La comparación toma las garantías de etcd y las documentadas por Apache ZooKeeper \cite{etcdapi,etcdgar,etcdfail,zookeeper,zkadmin}.
@@ -162,7 +198,9 @@ Un ensayo de caída y retorno comprueba un recorrido concreto. Gulcan et al. usa
 \end{enumerate}
 
 \section*{Declaración de uso de inteligencia artificial}
-Se utilizó OpenAI Codex (familia GPT-6, versión específica pendiente de confirmar) para preparar el borrador en LaTeX, cotejar la bibliografía, contrastar la documentación y revisar la compilación. Las cifras del experimento se cotejaron con las capturas originales y el registro de comandos del repositorio. Los DOI se cotejaron con los metadatos bibliográficos y con publicaciones o repositorios institucionales. Queda pendiente la revisión personal del texto y de las anotaciones de lectura por parte del estudiante.
+Se utilizó ChatGPT (GPT-6) y ChatGPT Work como apoyo para organizar el informe, preparar borradores en LaTeX, revisar referencias bibliográficas y consultar documentación técnica. La herramienta también ayudó a seleccionar y resaltar fragmentos de tres artículos académicos.
+
+El experimento con etcd se ejecutó en un entorno local con Docker. Los comandos, sus resultados y las capturas originales quedaron registrados en el repositorio. Las fuentes consultadas se contrastaron con sus publicaciones y enlaces oficiales. La revisión final del contenido y la explicación de los resultados corresponden al estudiante.
 
 \clearpage
 \printbibliography[title={Referencias}]
@@ -176,12 +214,16 @@ Se utilizó OpenAI Codex (familia GPT-6, versión específica pendiente de confi
 
 \clearpage
 \section{Capturas de lectura de fuentes}
-Las páginas provienen de versiones publicadas. Los resaltados se prepararon con asistencia de IA y quedan pendientes de revisión y anotación por el estudiante.
+Las páginas provienen de versiones publicadas. 
+Las capturas corresponden a tres artículos citados en el informe.
+Se incluyen los fragmentos utilizados y sus páginas
+para relacionarlos con el análisis técnico.
+
 \evidencia{Anexos/lectura_bora.png}{Bora et al., p.~8. Elección y replicación en el modelo de Raft \cite{bora2024raft}.}{fig:bora}
 \clearpage
 \evidencia{Anexos/lectura_gulcan.png}{Gulcan et al., p.~282:2. Uso de un modelo abstracto para medir cobertura \cite{gulcan2025modelfuzz}.}{fig:gulcan}
 \clearpage
-\evidencia{Anexos/lectura_borgarelli.png}{Borgarelli et al., p.~339:1. Recompensa para explorar estados nuevos \cite{borgarelli2024reward}.}{fig:borgarelli}
+\evidencia{Anexos/lectura_borgarelli.png}{Borgarelli et al., p.~339:3. Recompensa para explorar estados nuevos \cite{borgarelli2024reward}.}{fig:borgarelli}
 
 \clearpage
 \section{Capturas del experimento}
