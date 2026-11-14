@@ -126,4 +126,4 @@ Una entrada por cada día trabajado. Las fechas deben coincidir con los commits 
 - **Qué hice:** Actualicé el `README.md` de la carpeta con los datos del informe, el enlace al video de presentación y las instrucciones de compilación: compilador, archivo principal, orden de comandos y dependencias. También corregí la estructura de carpetas y las rutas, que estaban desactualizadas.
 - **Problema encontrado:** El README conservaba marcadores sin completar, nombraba las rutas en minúsculas (`referencias.bib`, `capturas/`) y no explicaba por qué se repite `pdflatex` ni qué se necesita para compilar. Un lector podía ejecutar los comandos en el orden incorrecto y obtener citas sin resolver.
 - **Cómo lo resolví:** Probé la secuencia completa en una copia limpia de la carpeta, con `pdflatex`, `biber` y dos `pdflatex`, y verifiqué que generara el PDF de 33 páginas sin errores. Documenté los requisitos, las dependencias por paquete, los archivos indispensables, la limpieza de auxiliares y las dos advertencias inocuas de la compilación.
-- **Tiempo dedicado:** 30 min
+- **Tiempo dedicado:** 8 min
