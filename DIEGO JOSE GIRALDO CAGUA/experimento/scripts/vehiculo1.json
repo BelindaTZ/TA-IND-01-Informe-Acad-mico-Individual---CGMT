@@ -1,0 +1,6 @@
+{
+  "placa": {"S": "PBC-2045"},
+  "marca": {"S": "Chevrolet"},
+  "anio": {"N": "2018"},
+  "aprobado": {"BOOL": false}
+}

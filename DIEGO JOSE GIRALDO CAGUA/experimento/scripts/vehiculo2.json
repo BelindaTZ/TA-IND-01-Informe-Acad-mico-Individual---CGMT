@@ -1,0 +1,6 @@
+{
+  "placa": {"S": "ABC-1234"},
+  "marca": {"S": "Toyota"},
+  "anio": {"N": "2022"},
+  "aprobado": {"BOOL": true}
+}

@@ -1,0 +1,6 @@
+{
+  "placa": {"S": "GHT-5678"},
+  "marca": {"S": "Kia"},
+  "anio": {"N": "2020"},
+  "aprobado": {"BOOL": true}
+}
