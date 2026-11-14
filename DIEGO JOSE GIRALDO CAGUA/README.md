@@ -8,6 +8,7 @@ El proyecto consiste en realizar un análisis crítico y comparativo de dos sist
 
 - **Facebook TAO:** sistema distribuido de almacenamiento de datos en forma de grafo, desarrollado por Facebook.
 - **Amazon DynamoDB:** servicio de base de datos NoSQL distribuida, ofrecido por Amazon Web Services (AWS).
+- **Link del video:** https://youtu.be/95TQS1WtIm8
 
 El análisis aborda los principales conceptos de la Unidad 1, relacionando la teoría con las características, decisiones arquitectónicas y mecanismos de funcionamiento de ambos sistemas.
 
