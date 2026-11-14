@@ -61,7 +61,7 @@
 \url{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT}
 \end{flushleft}
 \vspace{.8cm}
-Versión revisada para completar las evidencias personales de entrega.
+
 \end{titlepage}
 \hypersetup{pageanchor=true}
 \setcounter{page}{1}
@@ -176,7 +176,7 @@ También existen fallos reales que afectan a varios componentes. El 13 de mayo d
 El incidente muestra que la replicación no elimina todos los problemas operativos. El reporte no detalla los grupos Raft afectados, por lo que no corresponde calcular sus quórums a partir de esa información. Sí permite reconocer que una causa compartida puede afectar a varios servidores a la vez y superar el caso sencillo de perder un solo proceso.
 
 \section{Experimentación propia}
-Los conceptos anteriores se llevaron a una práctica local para observar qué pasa al detener un componente de almacenamiento. La ejecución final que respaldan las nuevas capturas se hizo con Docker Compose y TiDB 7.5.0. Los intentos previos con TiUP y el primer error de Docker se conservan como antecedentes, pero no se mezclan con los resultados de esta corrida.
+Los conceptos anteriores se llevaron a una práctica local para observar qué pasa al detener un componente de almacenamiento. La ejecución final que respaldan las nuevas capturas se hizo con Docker Compose y TiDB 7.5.0. Los intentos previos con TiUP y Docker no se utilizan como resultados de esta corrida.
 
 \subsection{Entorno y objetivo de la prueba}
 El objetivo fue comprobar si se podía insertar y consultar información después de terminar uno de los tres contenedores TiKV. El archivo Compose utilizado se incluye sin modificar en \path{experimento/docker-compose.yml}. En él aparecen un contenedor PD, un TiDB Server y tres TiKV, todos con imágenes de versión 7.5.0.
@@ -316,7 +316,7 @@ También quedó claro que la prueba tiene límites. No se registró el estado de
 Mi conclusión es que TiDB resulta una opción interesante cuando existe una necesidad real de distribuir SQL y combinar tipos de carga. Para elegirlo en un proyecto tendría que valorar esas necesidades junto con el costo de coordinación y operación. La práctica ayudó a entender ese compromiso desde el funcionamiento del sistema y no solo desde la definición de los conceptos.
 
 \section{Declaración de uso de inteligencia artificial}
-Utilicé OpenAI Codex, agente basado en GPT-6, para organizar el material, revisar conceptos y referencias, preparar LaTeX e incorporar las lecturas con resaltados. Las fuentes se contrastaron con documentación y registros editoriales. La práctica y las capturas son material propio; sus datos se conservaron y los resaltados se añadieron sobre el PDF. Antes de entregar debo revisar, comprender y poder explicar el texto y sus fuentes.
+El informe partió de mis avances en DOCX. Utilicé OpenAI Codex, agente basado en GPT-6, para buscar y contrastar fuentes, apoyar su lectura, revisar y adaptar el texto, darle formato en LaTeX y resaltar fragmentos. Verifiqué la información con documentación oficial, registros editoriales y resultados de mi práctica. Se conservaron las capturas originales y la versión final del informe; debo poder explicar su contenido.
 
 \FloatBarrier
 \label{fin:contenido}
