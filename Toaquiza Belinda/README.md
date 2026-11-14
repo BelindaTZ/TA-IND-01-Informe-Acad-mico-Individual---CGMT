@@ -26,7 +26,20 @@ tolerancia a fallos), con dos experimentos propios sobre clústeres de tres nodo
 
 `main.tex` es el único archivo que se compila. Debe ejecutarse desde esta carpeta
 (la que contiene `main.tex`), porque todas las rutas de figuras y de la bibliografía
-son relativas.
+son relativas. Como el repositorio agrupa varias carpetas de estudiantes, no se debe
+compilar desde la raíz del repositorio.
+
+```powershell
+# Windows (PowerShell), desde la raíz del repositorio
+cd "Toaquiza Belinda"
+Get-Location    # debe terminar en ...\Toaquiza Belinda
+```
+
+```bash
+# Linux / macOS, desde la raíz del repositorio
+cd "Toaquiza Belinda"
+pwd             # debe terminar en .../Toaquiza Belinda
+```
 
 ### Orden de comandos
 
@@ -111,6 +124,16 @@ resultado:
   (la portada y la página 1 comparten el ancla de `hyperref`).
 - `Package biblatex Warning: Bibliography string 'artno' untranslated` (cadena del
   estilo IEEE para números de artículo).
+
+### Solución de problemas
+
+| Mensaje | Causa | Solución |
+|---|---|---|
+| `! I can't find file 'main.tex'` | Se ejecutó el comando desde la raíz del repositorio o desde otra carpeta | `cd "Toaquiza Belinda"` y repetir la secuencia |
+| Las citas salen como `[?]` o falta la lista de referencias | No se ejecutó `biber main` o se compiló una sola vez | Repetir `biber main` y luego dos `pdflatex` |
+| `destination with the same identifier (name{page.1})` | Advertencia de `hyperref` por la portada sin numerar | Es inocua, no requiere acción |
+| `Bibliography string 'artno' untranslated` | Cadena del estilo IEEE que `babel` no traduce | Es inocua, no requiere acción |
+| MiKTeX pide instalar paquetes | Faltan dependencias | Aceptar la instalación automática o instalar el paquete indicado |
 
 ## Estructura de la carpeta
 
