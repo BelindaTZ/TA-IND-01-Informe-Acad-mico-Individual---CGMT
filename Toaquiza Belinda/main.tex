@@ -124,6 +124,8 @@
   {\large Paralelo: \paralelo\par}
   \vspace{0.2cm}
   {\large Fecha: \today\par}
+  \vspace{0.2cm}
+  {\large Video de presentación: \href{https://youtu.be/jjIqFWVfyhc}{\nolinkurl{https://youtu.be/jjIqFWVfyhc}}\par}
   \vspace{0.6cm}
   \vfill
 \end{titlepage}
@@ -222,33 +224,551 @@ Como caso operativo real, Discord describió que su clúster Cassandra de mensaj
 % Evidencias de autoría 1 y 2: capturas de ejecución real y experimento propio.
 % Comandos y resultados completos van en /experimento del repositorio.
 
+Esta sección contrasta con una ejecución real las diferencias que el análisis
+documental atribuyó a cada motor. Se realizaron dos experimentos sobre la misma
+topología de tres nodos: el primero detiene nodos y observa qué ocurre con las
+lecturas y las escrituras; el segundo aísla un nodo de la red para construir una
+partición 2+1. El registro completo de comandos, horas y salidas que no se
+reproducen aquí está en \texttt{experimento/comandos.md} del repositorio.
+
 \subsection{Entorno y justificación}
-\pendiente{Cómo levantaste el sistema (por ejemplo, Docker), versión y por qué
-elegiste ese entorno.}
+
+Ambos sistemas se ejecutaron con Docker sobre Windows, en PowerShell y en una
+sola máquina (\texttt{DESKTOP-OCH81AB}); la versión del motor de Docker no quedó
+registrada. Se usaron los archivos de composición de
+\texttt{experimento/cockroachdb/} y \texttt{experimento/cassandra/}.
+\sistemaA{} correspondió a la
+versión 26.4.0 (CCL), con la imagen \texttt{cockroachdb/cockroach:v26.4.0} y tres
+nodos (\texttt{roach1}, \texttt{roach2} y \texttt{roach3}) que se comunican por
+TLS con certificados generados para el ejercicio y guardados en el volumen
+\texttt{crdb-certs}. \sistemaB{} correspondió a la versión 5.0.9, con la imagen
+\texttt{cassandra:5.0} y tres nodos (\texttt{cass1}, \texttt{cass2} y
+\texttt{cass3}) en el centro de datos \texttt{dc1}; el espacio de claves
+\texttt{prueba} usó \texttt{NetworkTopologyStrategy} con factor de replicación 3.
+
+La elección de Docker se justifica por tres razones prácticas. Primera, reproduce
+la misma topología en cada ejecución a partir de los archivos de composición, sin
+instalar los motores en el sistema anfitrión. Segunda, separa los nodos en una red
+virtual propia, lo que permitió construir la partición del segundo experimento con
+\texttt{docker network disconnect} sin apagar el proceso. Tercera, deja las salidas
+de cada nodo disponibles mediante \texttt{docker exec}, de modo que la evidencia se
+toma del sistema en ejecución. La contrapartida es que los tres nodos comparten un
+solo equipo físico: las caídas y el aislamiento ocurren entre contenedores y no
+entre máquinas, por lo que la prueba no reproduce fallas de hardware ni latencias
+de una red real.
+
+Cada rango de \sistemaA{} se replica en tres réplicas votantes y las escrituras se
+confirman al alcanzar la mayoría, que en esta topología son dos de tres réplicas
+\cite{cockroachlabsReplication}. En \sistemaB{}, el factor de replicación 3 indica
+cuántas copias guarda el clúster, mientras que el nivel de consistencia de cada
+operación fija cuántas respuestas espera el coordinador; por eso \texttt{ONE},
+\texttt{QUORUM} y \texttt{ALL} exigen una, dos y tres respuestas respectivamente
+\cite{apacheCassandraDynamo,apacheCassandraGuarantees}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.60\textwidth]{Capturas/cockroachdb-cluster-inicializado-y-verificado.png}
+  \caption{Inicialización del clúster de \sistemaA{} y verificación de los tres
+  nodos con \texttt{node status} (13 de noviembre de 2026).}
+  \label{fig:entorno-crdb}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{Capturas/cassandra-cluster-3-nodos-verificacion-UN.png}
+  \caption{Clúster de \sistemaB{} con los tres nodos en estado \texttt{UN} según
+  \texttt{nodetool status}, que confirma la disponibilidad del anillo
+  \cite{apacheCassandraArchitecture}.}
+  \label{fig:entorno-cass}
+\end{figure}
+
+\begin{lstlisting}[caption={Arranque de ambos clústeres (extracto de \texttt{experimento/comandos.md}).},label={lst:arranque}]
+# CockroachDB (desde experimento/cockroachdb)
+docker compose up -d
+docker compose ps
+docker exec -it roach1 cockroach init --certs-dir=/certs --host=roach1:26257
+docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257
+
+# Cassandra (desde experimento/cassandra)
+docker compose up -d
+docker compose ps
+docker exec -it cass1 nodetool status
+\end{lstlisting}
 
 \subsection{Procedimiento}
-\pendiente{Describe el experimento y el concepto de la Unidad~1 que ilustra.}
 
-\begin{lstlisting}[caption={Comandos usados en el experimento (ejemplo de formato).},label={lst:comandos}]
-# Reemplaza este bloque por tus comandos reales.
-# El archivo completo debe estar en experimento/ del repositorio.
+\subsubsection{Experimento 1: caída de nodos}
+
+El concepto de la Unidad~1 que se ilustra es la tolerancia a fallos, entendida
+como la capacidad de seguir atendiendo operaciones cuando una réplica deja de
+responder, junto con la replicación y el consenso que la sostienen. La pregunta
+que guio el ensayo fue qué ocurre con las lecturas y las escrituras en cada motor
+cuando se detiene uno de los tres nodos y cuando solo queda una réplica disponible.
+
+Las hipótesis se formularon antes de los ensayos. En \sistemaA{} se esperaba que
+el clúster siguiera confirmando operaciones mientras el rango conservara su
+quórum, con una posible espera por elección de líder, y que dejara de confirmarlas
+al detener un segundo nodo. En \sistemaB{} se esperaba que \texttt{ONE} y
+\texttt{QUORUM} funcionaran con un nodo caído, que \texttt{ALL} fallara por exigir
+tres respuestas y que, con dos nodos caídos, solo \texttt{ONE} pudiera completarse
+desde la única réplica disponible; esta predicción se apoya en los niveles de
+consistencia descritos por la documentación \cite{apacheCassandraDynamo}.
+
+En \sistemaA{} se verificó primero el estado de los nodos, se creó la base
+\texttt{prueba} con la tabla \texttt{datos} y tres filas iniciales, y se consultó
+el rango que almacena la tabla. Después se detuvo \texttt{roach2} y se repitieron
+lectura y escritura; luego se detuvo \texttt{roach3} y se intentó consultar con dos
+nodos caídos. Por último se iniciaron ambos nodos y se registró la recuperación,
+incluido un estado anómalo de \texttt{roach1} que se corrigió al reiniciarlo.
+
+En \sistemaB{} se levantó el clúster, se comprobó la versión con
+\texttt{nodetool version} y se preparó el mismo esquema con factor de replicación 3.
+Cada etapa combinó \texttt{CONSISTENCY} con lecturas y escrituras separadas, y se
+verificó qué nodos eran réplicas de la clave consultada con
+\texttt{nodetool getendpoints}. Se detuvo \texttt{cass2}, se repitieron las pruebas
+con los tres niveles, se detuvo también \texttt{cass3} y se cerró con el arranque de
+ambos nodos y una lectura con \texttt{ALL}.
+
+\begin{lstlisting}[caption={Comandos del experimento 1 en \sistemaA{} (extracto).},label={lst:e1-crdb}]
+# Linea base y datos iniciales
+docker compose ps
+docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257
+docker exec -it roach1 cockroach sql --certs-dir=/certs --host=roach1:26257
+
+CREATE DATABASE prueba;
+USE prueba;
+CREATE TABLE datos (id INT PRIMARY KEY, valor STRING);
+INSERT INTO datos VALUES (1, 'a'), (2, 'b'), (3, 'c');
+SELECT * FROM datos ORDER BY id;
+SHOW RANGES FROM TABLE datos;
+
+# Un nodo detenido
+docker stop roach2
+docker compose ps -a
+SELECT * FROM datos ORDER BY id;
+INSERT INTO datos VALUES (4, 'un_nodo_caido');
+SELECT * FROM datos WHERE id = 4;
+
+# Dos nodos detenidos
+docker stop roach3
+docker compose ps -a
+SELECT * FROM datos ORDER BY id;
+
+# Recuperacion
+docker start roach2 roach3
+docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257
+docker restart roach1
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Comandos del experimento 1 en \sistemaB{} (extracto).},label={lst:e1-cass}]
+CREATE KEYSPACE prueba WITH replication =
+  {'class': 'NetworkTopologyStrategy', 'dc1': 3};
+CREATE TABLE prueba.datos (id int PRIMARY KEY, valor text);
+CONSISTENCY QUORUM;
+INSERT INTO prueba.datos (id, valor) VALUES (1, 'a');
+SELECT * FROM prueba.datos;
+
+docker exec cass1 nodetool getendpoints prueba datos 1
+
+# Un nodo detenido
+docker stop cass2
+docker exec -it cass1 nodetool status
+
+CONSISTENCY ONE;     SELECT * FROM prueba.datos WHERE id = 1;
+CONSISTENCY QUORUM;  SELECT * FROM prueba.datos WHERE id = 1;
+CONSISTENCY ALL;     SELECT * FROM prueba.datos WHERE id = 1;
+
+# Dos nodos detenidos
+docker stop cass3
+CONSISTENCY ONE;     INSERT INTO prueba.datos (id, valor) VALUES (7, 'dos_caidos_one');
+CONSISTENCY QUORUM;  INSERT INTO prueba.datos (id, valor) VALUES (8, 'dos_caidos_quorum');
+CONSISTENCY ALL;     INSERT INTO prueba.datos (id, valor) VALUES (9, 'dos_caidos_all');
+
+# Recuperacion
+docker start cass2 cass3
+CONSISTENCY ALL;     SELECT * FROM prueba.datos;
+\end{lstlisting}
+
+\subsubsection{Experimento 2: partición de red}
+
+Este experimento ilustra el teorema CAP: ante una partición, un sistema debe
+elegir entre mantener la consistencia de lo que confirma o seguir respondiendo en
+ambos lados. La pregunta fue cómo afecta una partición 2+1 a las lecturas y
+escrituras de cada motor y qué datos se pueden verificar después de reconectar el
+nodo aislado.
+
+La hipótesis para \sistemaA{} fue que el lado mayoritario confirmaría una escritura
+mientras el rango conservara quórum, y que desde el lado aislado no se confirmaría
+una escritura nueva. Para \sistemaB{} se esperaba que \texttt{ONE} operara en ambos
+lados si cada uno alcanzaba una réplica, que \texttt{QUORUM} solo completara en el
+lado de dos réplicas y que \texttt{ALL} no completara en ninguno
+\cite{apacheCassandraDynamo}.
+
+La partición se construyó sin detener los procesos. En cada sistema se desconectó
+un nodo de la red del proyecto con \texttt{docker network disconnect}, se
+comprobaron las operaciones desde ambos lados y se reconectó el nodo con su
+dirección IP original. En \sistemaA{} se aisló \texttt{roach3} y se usó una sesión
+SQL local en ese mismo nodo para el lado aislado. En \sistemaB{} se aisló
+\texttt{cass3} y se abrió \texttt{cqlsh} contra \texttt{127.0.0.1} para consultar
+desde el lado aislado.
+
+\begin{lstlisting}[caption={Aislamiento y reconexión del nodo en cada sistema (extracto).},label={lst:e2-particion}]
+# CockroachDB: aislar roach3 conservando el contenedor encendido
+docker network disconnect crdb-lab_crdbnet roach3
+docker compose ps -a
+docker inspect roach3 --format '{{json .NetworkSettings.Networks}}'
+# Lado mayoritario (roach1 y roach2)
+SELECT * FROM datos WHERE id = 1;
+INSERT INTO datos VALUES (31, 'particion_mayoria');
+SELECT * FROM datos WHERE id = 31;
+# Lado aislado (dentro de roach3)
+docker exec -it roach3 cockroach sql --certs-dir=/certs \
+  --host=localhost:26257 --database=prueba
+# Reconexion con la IP original
+docker network connect --ip 172.22.0.2 --alias roach3 crdb-lab_crdbnet roach3
+
+# Cassandra: aislar cass3 y consultar desde el propio nodo
+docker network disconnect cassandra-lab_cassnet cass3
+docker exec -it cass3 cqlsh 127.0.0.1 9042
+CONSISTENCY ONE;     INSERT INTO prueba.datos (id, valor) VALUES (21, 'particion_aislado_one');
+CONSISTENCY QUORUM;  INSERT INTO prueba.datos (id, valor) VALUES (22, 'particion_aislado_quorum');
+
+# Reconexion con la IP original
+docker network connect --ip 172.28.0.13 cassandra-lab_cassnet cass3
 \end{lstlisting}
 
 \subsection{Resultados}
+
+\subsubsection{Experimento 1 con \sistemaA{}}
+
+La línea base mostró los tres nodos con \texttt{is\_available=true} e
+\texttt{is\_live=true}. La tabla \texttt{datos} quedó con las filas 1, 2 y 3, y
+\texttt{SHOW RANGES} indicó el rango 87 con réplicas y réplicas votantes
+\texttt{\{1,2,3\}} (Figuras~\ref{fig:e1-crdb-base} y~\ref{fig:e1-crdb-datos}). Con \texttt{roach2} detenido,
+la lectura devolvió las tres filas y la escritura de la fila 4 respondió
+\texttt{INSERT 0 1}; la verificación posterior mostró la fila 4, de modo que la
+operación se confirmó con dos de las tres réplicas votantes
+(Figura~\ref{fig:e1-crdb-un-nodo}). Al detener también \texttt{roach3}, la consola
+SQL de \texttt{roach1} no obtuvo resultado y la salida quedó cortada por el ancho de
+la ventana con el mensaje \texttt{replica unavailable}, asociado en la sesión a la
+pérdida de quórum del rango (Figura~\ref{fig:e1-crdb-dos-nodos}).
+
 \begin{figure}[H]
   \centering
-  % \includegraphics[width=0.9\textwidth]{capturas/captura-01.png}
-  \marcador{Captura 1: con tu usuario en el prompt, fecha y hora visibles}{4cm}
-  \caption{\pendiente{Qué muestra la captura 1.}}
-  \label{fig:cap1}
+  \includegraphics[width=0.85\textwidth]{Capturas/2026-11-13_cockroachdb_e1_01_linea_base_estado_cluster.png}
+  \caption{Experimento 1, \sistemaA{}: línea base con los tres nodos activos y
+  disponibles según \texttt{node status}.}
+  \label{fig:e1-crdb-base}
 \end{figure}
 
-\pendiente{Incluye al menos 4 capturas propias de la ejecución real del sistema
-(duplica el bloque de figura anterior).}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{Capturas/2026-11-13_cockroachdb_e1_02_linea_base_datos_rango87.png}
+  \caption{Experimento 1, \sistemaA{}: creación de la tabla, filas 1 a 3 y rango 87
+  con réplicas votantes \texttt{\{1,2,3\}}.}
+  \label{fig:e1-crdb-datos}
+\end{figure}
 
-\subsection{Interpretación}
-\pendiente{Interpreta los resultados a la luz de las transparencias, CAP/PACELC,
-comunicación y tolerancia a fallos de la sección anterior.}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{Capturas/2026-11-13_cockroachdb_e1_03_roach2_detenido_lectura_escritura.png}
+  \caption{Experimento 1, \sistemaA{}: con \texttt{roach2} detenido, la lectura
+  devuelve las filas 1 a 3 y la escritura de la fila 4 se confirma y se verifica.}
+  \label{fig:e1-crdb-un-nodo}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{Capturas/2026-11-13_cockroachdb_e1_04_dos_nodos_caidos_perdida_quorum.png}
+  \caption{Experimento 1, \sistemaA{}: con \texttt{roach2} y \texttt{roach3}
+  detenidos, la consulta devuelve \texttt{replica unavailable} por pérdida de
+  quórum.}
+  \label{fig:e1-crdb-dos-nodos}
+\end{figure}
+
+Al iniciar \texttt{roach2} y \texttt{roach3}, la consola SQL volvió a responder antes
+de que \texttt{node status} reconociera al nodo 1: las filas 1 a 4 seguían visibles
+y la fila 6 se insertó y verificó. En ese momento \texttt{node status} mostraba
+\texttt{address=NULL}, \texttt{is\_available=true} e \texttt{is\_live=false} para
+\texttt{roach1}. Tras \texttt{docker restart roach1}, el nodo recuperó su dirección,
+los tres nodos quedaron activos y la consulta final mostró las filas 1, 2, 3, 4 y 6
+sobre el rango 88 con votantes \texttt{\{1,2,3\}}. La causa del estado anómalo y del
+cambio de identificador del rango no quedó verificada. Estas capturas están en
+\texttt{experimento/comandos.md} (pasos 5 y 6 del experimento).
+
+\subsubsection{Experimento 1 con \sistemaB{}}
+
+Con los tres nodos \texttt{UN} y \texttt{QUORUM}, la lectura devolvió las filas
+iniciales, y \texttt{nodetool getendpoints} mostró que la clave 1 residía en las tres
+direcciones del anillo (Figura~\ref{fig:e1-cass-base}). Al detener \texttt{cass2},
+\texttt{nodetool status} lo marcó \texttt{DN}. Con \texttt{ONE} la lectura de la
+clave 1 respondió y la escritura de la fila 4 se confirmó en una lectura posterior;
+con \texttt{QUORUM} ocurrió lo mismo con la fila 5; con \texttt{ALL}, tanto la
+lectura como la escritura de la fila 6 devolvieron \texttt{Unavailable} con
+\texttt{required\_replicas: 3} y \texttt{alive\_replicas: 2}
+(Figura~\ref{fig:e1-cass-un-nodo}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{Capturas/2026-11-13_cassandra_e1_02_datos_base_consistency_quorum.png}
+  \caption{Experimento 1, \sistemaB{}: espacio de claves \texttt{prueba} con factor de
+  replicación 3, filas iniciales y lectura con \texttt{QUORUM}.}
+  \label{fig:e1-cass-base}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.58\textwidth]{Capturas/2026-11-13_cassandra_e1_04_cass2_detenido_estado_y_pruebas.png}
+  \caption{Experimento 1, \sistemaB{}: \texttt{cass2} detenido y en estado
+  \texttt{DN}; las operaciones con \texttt{ONE} y \texttt{QUORUM} se completan y
+  \texttt{ALL} falla por falta de la tercera réplica.}
+  \label{fig:e1-cass-un-nodo}
+\end{figure}
+
+Detener también \texttt{cass3} dejó a \texttt{cass1} como único nodo \texttt{UN}.
+En ese estado, \texttt{ALL} y \texttt{QUORUM} rechazaron lecturas y escrituras con
+\texttt{Unavailable} (tres y dos réplicas requeridas frente a una disponible),
+mientras \texttt{ONE} completó la lectura de la clave 1 y la escritura de la fila 7,
+que se verificó en la lectura siguiente (Figura~\ref{fig:e1-cass-dos-nodos}). Tras
+\texttt{docker start cass2 cass3}, el primer \texttt{nodetool status} todavía mostró
+dos nodos \texttt{DN}; sin otro reinicio visible, el estado convergió a tres
+\texttt{UN} y \texttt{CONSISTENCY ALL} devolvió seis filas (1, 2, 3, 4, 5 y 7). No
+aparecieron las filas 6, 8 ni 9, cuyos intentos de escritura ya mostraban errores en
+las capturas de las etapas previas.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.60\textwidth]{Capturas/2026-11-13_cassandra_e1_06_dos_nodos_estado_y_consistency.png}
+  \caption{Experimento 1, \sistemaB{}: con dos nodos detenidos, \texttt{ALL} y
+  \texttt{QUORUM} devuelven \texttt{Unavailable} y \texttt{ONE} completa la lectura
+  y la escritura de la fila 7.}
+  \label{fig:e1-cass-dos-nodos}
+\end{figure}
+
+\subsubsection{Experimento 2 con \sistemaA{}}
+
+La línea base mostró los tres nodos activos, las filas 1, 2, 3, 4 y 6 y el rango 88
+con votantes \texttt{\{1,2,3\}}; \texttt{docker inspect} confirmó que \texttt{roach3}
+usaba la red del proyecto con la dirección \texttt{172.22.0.2}. Al desconectarlo, la
+inspección devolvió \texttt{\{\}} y \texttt{docker compose ps -a} siguió mostrando el
+contenedor en ejecución: el proceso estaba encendido y la conectividad aislada
+(Figura~\ref{fig:e2-crdb-aislado}). Del lado mayoritario, la lectura de la clave 1, la
+escritura de la fila 31 y su verificación se completaron con dos nodos conectados
+(Figura~\ref{fig:e2-crdb-mayoria}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.60\textwidth]{Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png}
+  \caption{Experimento 2, \sistemaA{}: \texttt{roach3} aislado de la red pero con el
+  contenedor en ejecución, y operaciones confirmadas desde el lado mayoritario.}
+  \label{fig:e2-crdb-aislado}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{Capturas/2026-11-13_cockroachdb_e2_03_lado_mayoritario_lectura_escritura.png}
+  \caption{Experimento 2, \sistemaA{}: lectura de la clave 1, \texttt{INSERT 0 1} de
+  la fila 31 y verificación de esa fila desde \texttt{roach1}.}
+  \label{fig:e2-crdb-mayoria}
+\end{figure}
+
+Desde la sesión SQL local de \texttt{roach3} aislado, la lectura de la clave 1
+devolvió \texttt{replica unavailable} con el detalle \texttt{lost quorum} y
+\texttt{SQLSTATE XXUUU}; a continuación se introdujo la escritura de la fila 32,
+pero la captura termina sin respuesta ni nuevo indicador de consulta, por lo que el
+resultado de esa escritura no quedó confirmado (Figura~\ref{fig:e2-crdb-sesion}).
+El primer intento de reconexión falló porque los argumentos de
+\texttt{docker network connect} se escribieron en orden incorrecto; el segundo usó la
+dirección original y a las 17:03 los tres nodos aparecieron activos, la fila 31
+seguía visible y el rango conservaba los votantes \texttt{\{1,2,3\}}
+(Figura~\ref{fig:e2-crdb-reconexion}). En una comprobación posterior, dos consultas
+de la fila 32 no devolvieron filas, lo que no permite concluir qué ocurrió con el
+intento aislado.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{Capturas/2026-11-13_cockroachdb_e2_04_lado_aislado_sesion_sql.png}
+  \caption{Experimento 2, \sistemaA{}: sesión SQL en \texttt{roach3} aislado; la
+  lectura de la clave 1 falla con \texttt{lost quorum} y la escritura de la fila 32
+  queda sin respuesta visible.}
+  \label{fig:e2-crdb-sesion}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{Capturas/2026-11-13_cockroachdb_e2_07_tres_nodos_activos.png}
+  \caption{Experimento 2, \sistemaA{}: reconexión de \texttt{roach3} con su IP
+  original, tres nodos activos y fila 31 visible.}
+  \label{fig:e2-crdb-reconexion}
+\end{figure}
+
+\subsubsection{Experimento 2 con \sistemaB{}}
+
+A las 16:25:51 \texttt{docker compose ps} todavía mostraba \texttt{cass3} como
+\texttt{Up (healthy)}, mientras \texttt{nodetool status} ya lo reportaba \texttt{DN};
+la inspección de redes no listó ninguna y un segundo \texttt{disconnect} confirmó que
+el contenedor ya estaba aislado (Figura~\ref{fig:e2-cass-aislado}). Desde
+\texttt{cqlsh} contra \texttt{127.0.0.1}, \texttt{ONE} completó la lectura de la clave
+1 y la escritura de la fila 21, que se verificó de inmediato; \texttt{QUORUM} rechazó
+lectura y escritura con \texttt{required\_replicas: 2} y
+\texttt{alive\_replicas: 1} (Figura~\ref{fig:e2-cass-aislado-ops}). Del lado de
+\texttt{cass1} y \texttt{cass2}, \texttt{ONE} y \texttt{QUORUM} leyeron la clave 1 y
+registraron las filas 23 y 24, mientras \texttt{ALL} falló con
+\texttt{required\_replicas: 3} y \texttt{alive\_replicas: 2}
+(Figura~\ref{fig:e2-cass-mayoria}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{Capturas/2026-11-13_cassandra_e2_01_cass3_aislado_estado_confirmacion.png}
+  \caption{Experimento 2, \sistemaB{}: \texttt{cass3} aislado de la red y confirmación
+  del \texttt{disconnect} mientras el proceso seguía activo.}
+  \label{fig:e2-cass-aislado}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{Capturas/2026-11-13_cassandra_e2_02_lado_aislado_one_quorum.png}
+  \caption{Experimento 2, \sistemaB{}: lado aislado; \texttt{ONE} completa la
+  escritura de la fila 21 y \texttt{QUORUM} falla por falta de la segunda réplica.}
+  \label{fig:e2-cass-aislado-ops}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{Capturas/2026-11-13_cassandra_e2_03_lado_mayoritario_one_quorum_all.png}
+  \caption{Experimento 2, \sistemaB{}: lado mayoritario; \texttt{ONE} y
+  \texttt{QUORUM} operan y \texttt{ALL} falla por requerir tres réplicas.}
+  \label{fig:e2-cass-mayoria}
+\end{figure}
+
+La reconexión se hizo con la dirección \texttt{172.28.0.13} y, tras ella,
+\texttt{nodetool status} mostró los tres nodos \texttt{UN}. Con
+\texttt{CONSISTENCY ALL}, la consulta de las claves 21 a 26 devolvió exactamente las
+filas 21, 23 y 24 (Figura~\ref{fig:e2-cass-reconexion}). Las filas 22 y 25 habían
+devuelto error durante la partición y la 26 se consultó sin haberse intentado
+escribir. Como se usaron claves distintas, la evidencia muestra la disponibilidad por
+nivel y la visibilidad posterior, pero no prueba la reconciliación de escrituras
+concurrentes sobre una misma clave.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{Capturas/2026-11-13_cassandra_e2_04_reconexion_tres_nodos_un_y_lectura_all.png}
+  \caption{Experimento 2, \sistemaB{}: reconexión de \texttt{cass3}, tres nodos
+  \texttt{UN} y lectura con \texttt{ALL} que devuelve las filas 21, 23 y 24.}
+  \label{fig:e2-cass-reconexion}
+\end{figure}
+
+La Tabla~\ref{tab:e1} resume el primer experimento y la Tabla~\ref{tab:e2} el
+segundo, con los resultados observados en cada sistema.
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados del experimento 1 (caída de nodos).}
+  \label{tab:e1}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.0cm}XX@{}}
+    \toprule
+    Situación & \sistemaA & \sistemaB \\
+    \midrule
+    Todos los nodos activos & Tres nodos disponibles; rango 87 con votantes
+    \texttt{\{1,2,3\}}. & Tres nodos \texttt{UN} en \texttt{dc1}, RF=3; filas 1 a 3. \\
+    Un nodo caído & Lectura y escritura continúan; la fila 4 persiste. &
+    \texttt{ONE} y \texttt{QUORUM} operan; \texttt{ALL} falla (3 requeridas, 2 vivas). \\
+    Dos nodos caídos & \texttt{replica unavailable} por pérdida de quórum; la salida
+    aparece parcialmente en la captura. & \texttt{ONE} opera; \texttt{QUORUM} y
+    \texttt{ALL} fallan con 1 réplica viva. \\
+    Tras recuperar & Reinicio de \texttt{roach1}; filas 1, 2, 3, 4 y 6 y tres nodos
+    activos. & Tres nodos \texttt{UN}; \texttt{ALL} devuelve seis filas
+    (1, 2, 3, 4, 5 y 7). \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados del experimento 2 (partición de red 2+1).}
+  \label{tab:e2}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.0cm}XX@{}}
+    \toprule
+    Situación & \sistemaA & \sistemaB \\
+    \midrule
+    Lado aislado & Lectura con \texttt{lost quorum}; la escritura de la fila 32 queda
+    sin respuesta visible. & \texttt{ONE} opera; \texttt{QUORUM} falla (2 requeridas,
+    1 viva); \texttt{ALL} no se probó. \\
+    Lado mayoritario & Lectura de la clave 1 y fila 31 confirmada y visible. &
+    \texttt{ONE} y \texttt{QUORUM} operan; \texttt{ALL} falla (3 requeridas,
+    2 vivas). \\
+    Tras reconectar & Tres nodos activos, fila 31 visible y votantes
+    \texttt{\{1,2,3\}}. & Tres nodos \texttt{UN}; \texttt{ALL} devuelve 21, 23 y 24. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Interpretación y conclusiones del experimento}
+
+\begin{itemize}
+  \item \textbf{Contraste con las hipótesis.} Los resultados coincidieron con lo
+  previsto en los comportamientos observados. \sistemaA{} mantuvo lectura y escritura
+  cuando el rango conservó la mayoría y dejó de confirmar la consulta al perderla. En
+  \sistemaB{}, con un nodo caído, \texttt{ONE} y \texttt{QUORUM} se completaron y
+  \texttt{ALL} falló; con dos nodos caídos solo \texttt{ONE} operó. En la partición,
+  \texttt{ONE} funcionó en ambos lados, \texttt{QUORUM} solo en el mayoritario y
+  \texttt{ALL} falló allí donde se probó.
+  \item \textbf{Diferencia de mecanismo.} \sistemaA{} aplica una regla única de quórum
+  por rango, de modo que la disponibilidad depende de cuántas réplicas votantes
+  conserva la mayoría \cite{cockroachlabsReplication}. \sistemaB{} traslada esa
+  decisión al nivel de consistencia de cada operación, que el cliente puede cambiar
+  entre consultas \cite{apacheCassandraDynamo,apacheCassandraGuarantees}. Por eso,
+  con la misma topología de tres réplicas, la disponibilidad observada ante dos nodos
+  caídos fue distinta: el primero dejó de confirmar y el segundo pudo responder con
+  \texttt{ONE}.
+  \item \textbf{Qué muestran las particiones.} El aislamiento con
+  \texttt{docker network disconnect} reprodujo el escenario de CAP sin detener los
+  procesos: el nodo aislado siguió en ejecución y el lado mayoritario conservó la
+  capacidad de confirmar operaciones. En \sistemaA{} el lado aislado no pudo leer por
+  \texttt{lost quorum}; en \sistemaB{} pudo leer y escribir con \texttt{ONE}, lo que
+  evidencia el sacrificio de consistencia que ese nivel acepta. La lectura posterior
+  con \texttt{ALL} devolvió los datos escritos en ambos lados, pero el ensayo no
+  identifica el mecanismo de convergencia ni el tiempo exacto de detección, que en
+  \sistemaB{} depende de gossip y de mecanismos de reparación
+  \cite{apacheCassandraArchitecture,apacheCassandraRepair}.
+  \item \textbf{Conclusiones del experimento.} La evidencia respalda el contraste
+  descrito en la sección~3: \sistemaA{} se comportó como sistema CP en las
+  operaciones probadas, porque ante la partición conservó la consistencia de lo que
+  confirmaba y rechazó la lectura en la minoría; \sistemaB{} se comportó como AP con
+  \texttt{ONE} y como CP con \texttt{QUORUM} y \texttt{ALL}, según el nivel elegido
+  por la aplicación. El experimento mide disponibilidad y consistencia observada, no
+  rendimiento: no se registraron latencias ni se probaron escrituras concurrentes
+  sobre una misma clave.
+\end{itemize}
+
+\subsection{Limitaciones y reproducibilidad}
+
+Los tres nodos de cada motor se ejecutaron como contenedores en una sola máquina
+Windows. La prueba ejercita detenciones de procesos y aislamiento de red entre
+contenedores, pero no representa fallas de equipos físicos ni las condiciones de una
+red distribuida entre máquinas. Se probaron una topología, unas versiones y unas
+operaciones concretas, y los resultados no se generalizan a otras configuraciones.
+No se midieron tiempos de respuesta ni la duración exacta de detección y
+recuperación.
+
+En \sistemaA{}, la respuesta de la escritura de la fila 32 durante el aislamiento no
+quedó registrada, y que no aparezca en la consulta posterior no determina el
+resultado de ese intento. En \sistemaB{}, la lectura posterior a la reconexión
+devolvió las filas 21, 23 y 24; la 22 no quedó visible y la 26 se consultó sin
+haberse intentado escribir. Las capturas de las 17:26 a las 17:31 corresponden a la
+repetición del escenario de \sistemaA{} para recuperar una captura perdida, no a una
+desconexión adicional.
+
+Para reproducir el ensayo se requieren Docker en Windows, PowerShell y los archivos
+de composición de \texttt{experimento/}. En \sistemaA{} hay que generar los
+certificados en el volumen \texttt{crdb-certs} e inicializar el clúster una sola vez;
+en \sistemaB{} hay que esperar hasta que \texttt{nodetool status} muestre las tres
+direcciones como \texttt{UN}. Los pasos, las horas, las direcciones IP y las salidas
+completas de cada etapa están en \texttt{experimento/comandos.md}, que también
+registra las capturas de evidencia que no se incluyen en este informe.
+
 
 % =====================================================================
 \section{Ejemplos del entorno del estudiante}
