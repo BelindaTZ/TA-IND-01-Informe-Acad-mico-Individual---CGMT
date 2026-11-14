@@ -172,26 +172,51 @@ El esquema preliminar mostraba las cinco capas de CockroachDB y un ejemplo de un
 % =====================================================================
 
 \subsection{Transparencias de distribución}
-% Acceso, ubicación, migración, reubicación, replicación, concurrencia y fallos:
-% cuáles ofrece el sistema, cuáles no, y por qué.
-\pendiente{Analiza las siete transparencias: cuáles ofrece \sistemaA{} y cuáles no, con justificación.}
+
+La transparencia de distribución describe cuánto puede usar una aplicación los datos sin tener que conocer su ubicación física, el número de réplicas o los cambios internos del clúster. En ambos motores hay transparencias parciales: la interfaz simplifica el acceso, pero las decisiones sobre consistencia, disponibilidad y recuperación siguen siendo visibles para quien opera o programa el sistema.
+
+\paragraph{Acceso.} CockroachDB ofrece una interfaz SQL compatible con el protocolo de red de PostgreSQL; traduce las consultas en solicitudes sobre su almacenamiento distribuido. Cassandra expone CQL mediante su protocolo binario nativo. En los dos casos, el usuario trabaja con una interfaz lógica sin enviar manualmente cada consulta a todas las réplicas \cite{cockroachlabsArchitecture,cockroachlabsDeveloperBasics,apacheCassandraNative}.
+
+\paragraph{Ubicación.} Ambos sistemas ocultan en gran medida dónde reside cada dato. CockroachDB divide el espacio de claves en rangos y distribuye el encaminamiento entre los nodos. Cassandra calcula el token de la clave de partición y entrega la solicitud a las réplicas pertinentes; cualquier nodo puede actuar como coordinador. La ubicación física no forma parte de la consulta normal, aunque sí puede ser relevante para la configuración y la observabilidad \cite{cockroachlabsArchitecture,apacheCassandraDynamo}.
+
+\paragraph{Migración.} La ubicación lógica también permanece separada de la consulta cuando cambian las réplicas. CockroachDB puede reequilibrar rangos entre nodos; Cassandra distribuye tokens en el anillo y permite añadir, mover o retirar nodos. Esta transparencia es operativa, no absoluta: el cambio de topología requiere configuración y puede involucrar movimiento de datos, carga de red y tareas de mantenimiento \cite{cockroachlabsReplication,apacheCassandraDynamo}.
+
+\paragraph{Reubicación.} La ocultación de una transferencia mientras hay carga es parcial. CockroachDB describe la transferencia de instantáneas y la puesta al día de réplicas durante el rebalanceo. En Cassandra, los cambios del anillo y la reparación pueden transferir datos entre nodos. Las fuentes describen estos mecanismos, pero no garantizan que toda consulta en curso termine sin demora o reintento; esa continuidad tampoco se midió en esta práctica \cite{cockroachlabsReplication,apacheCassandraDynamo,apacheCassandraRepair}.
+
+\paragraph{Replicación.} CockroachDB administra réplicas de rangos mediante Raft y el cliente no selecciona los nodos que deben confirmar una escritura. Cassandra replica cada partición según la estrategia del espacio de claves, pero expone al cliente los niveles de consistencia (\texttt{ONE}, \texttt{QUORUM}, \texttt{ALL}, entre otros), que fijan cuántas respuestas espera el coordinador. Por eso Cassandra automatiza la copia de datos, aunque deja visible una parte mayor de la política de lectura y escritura \cite{cockroachlabsReplication,apacheCassandraDynamo}.
+
+\paragraph{Concurrencia.} CockroachDB aplica aislamiento \texttt{SERIALIZABLE} por defecto: el efecto de transacciones concurrentes debe corresponder a algún orden serial. La contención puede provocar reintentos y, si no se resuelve automáticamente, un error visible para la aplicación. Cassandra resuelve mutaciones ordinarias concurrentes por marcas de tiempo y regla de último escrito; no ofrece por ello una transacción serializable global entre particiones. Para operaciones condicionales de una partición ofrece transacciones ligeras basadas en Paxos. Así, en los dos motores la aplicación puede tener que manejar contención o elegir una garantía concreta \cite{cockroachlabsDeveloperBasics,apacheCassandraDynamo,apacheCassandraGuarantees}.
+
+\paragraph{Fallos.} La abstracción también es parcial. CockroachDB puede seguir atendiendo operaciones que conservan mayoría de votantes para el rango, pero puede rechazar una lectura actual o una escritura si falta quórum; también puede perderse la conexión al nodo usado por el cliente. Cassandra deja que el coordinador atienda según el nivel elegido, por lo que una operación con \texttt{ONE} puede responder cuando niveles mayores no alcanzan sus réplicas requeridas. Los errores de disponibilidad, los tiempos de espera y los reintentos no quedan ocultos por completo \cite{cockroachlabsReplication,apacheCassandraDynamo}.
 
 \subsection{CAP y PACELC}
-% Qué prioriza ante una partición y qué prioriza sin partición (latencia vs
-% consistencia), con evidencia de documentación técnica o artículos.
-\pendiente{Clasificación CAP y PACELC con evidencia citada.}
+
+CAP y PACELC describen compromisos bajo supuestos concretos, no una etiqueta independiente de la operación. En lo que sigue, la clasificación se limita a lecturas actuales y escrituras ordinarias sobre datos con tres réplicas; las conclusiones empíricas se restringen a las operaciones registradas en los experimentos \cite{cockroachlabsReplication,apacheCassandraDynamo,apacheCassandraGuarantees}.
+
+Durante una partición de red, CockroachDB prioriza mantener la consistencia de las operaciones que confirma: Raft exige mayoría de las réplicas del rango. En una disposición de tres réplicas, el lado con dos puede avanzar y el lado con una no puede confirmar una escritura que requiere quórum. Por ello, para estas operaciones CockroachDB presenta el perfil CP: tolera la partición, pero sacrifica disponibilidad en la minoría. En Cassandra el compromiso depende del nivel por operación. La documentación describe su orientación AP; en la práctica, \texttt{ONE} puede responder en cada lado si cada uno alcanza una réplica, mientras que \texttt{QUORUM} solo alcanza el mínimo en la mayoría y \texttt{ALL} requiere las tres. Con niveles más exigentes, Cassandra también sacrifica disponibilidad en el lado que no reúne las respuestas \cite{cockroachlabsReplication,apacheCassandraDynamo,apacheCassandraGuarantees}.
+
+Los ensayos concuerdan con ese contraste, dentro del alcance de las salidas observadas. Las salidas propias constan en \texttt{experimento/comandos.md}, apartados de E1 y E2. En E1, CockroachDB leyó y escribió con un nodo detenido; al detener dos, la consulta devolvió \texttt{replica unavailable}. En E2, el lado mayoritario confirmó la fila 31 y la lectura actual desde \texttt{roach3} aislado falló con \texttt{lost quorum}; el \texttt{INSERT} de la fila 32 quedó sin respuesta visible, así que no se afirma si se confirmó. En Cassandra, la partición 2+1 mostró que \texttt{ONE} completó lecturas y escrituras en ambos lados; \texttt{QUORUM} solo en el lado con dos réplicas; y \texttt{ALL} falló en ese lado y no se probó en el aislado. Tras reconectar, \texttt{ALL} devolvió las filas 21, 23 y 24. Como se usaron claves distintas, la prueba no demuestra cómo se resolverían escrituras concurrentes sobre la misma clave \cite{cockroachlabsReplication,apacheCassandraDynamo}.
+
+PACELC añade la pregunta del comportamiento sin partición: consistencia o menor latencia. Para operaciones actuales, CockroachDB mantiene coordinación de consenso y confirmación por mayoría, lo que puede añadir viajes de red; ofrece lecturas históricas de seguidores cuando se acepta menor frescura. El trabajo de VanBenschoten et al. estudia configuraciones de localidad y lecturas locales consistentes en despliegues multirregión; sus resultados explican una optimización posible, pero no predicen la latencia de este clúster local. La inferencia para las operaciones actuales de esta práctica es un perfil PC/EC: ante partición conserva consistencia en la mayoría y, aun sin partición, conserva consistencia mediante coordinación \cite{cockroachlabsReplication,cockroachlabsFollowerReads,vanbenschoten2022multiregion}.
+
+Cassandra permite escoger cuánto espera el coordinador. \texttt{ONE} exige menos respuestas y puede favorecer menor espera; \texttt{QUORUM} y \texttt{ALL} exigen más confirmaciones y restringen las operaciones que pueden responder. Por ello, su perfil sin partición no es único: el nivel elegido mueve el compromiso hacia latencia o consistencia. Ferreira et al. compararon niveles de consistencia en Cassandra y otros motores en despliegues de nube, y hallaron diferencias de rendimiento asociadas a la configuración; da Silva y Lima evaluaron sistemas en un clúster de placas de bajo consumo. Nejati SharifAldin y Nayebi Pour compararon los niveles nativos con un middleware causal externo. Estos estudios usan cargas y topologías distintas y respaldan el compromiso cualitativo, no una predicción numérica para Docker. En la práctica no se midió latencia; por tanto, la clasificación PL/EL para \texttt{ONE} y PC/EC para niveles de quórum se presenta como inferencia documental y no como resultado de rendimiento del experimento \cite{ferreira2024consistency,silva2023lowpower,nejati2026cassandra,apacheCassandraDynamo}.
 
 \subsection{Modelos de comunicación}
-% Cliente-servidor, P2P o híbrido; sincrónica o asincrónica;
-% sockets, RPC o mensajería.
-\pendiente{Modelo de comunicación del sistema y justificación.}
+
+CockroachDB combina el modelo cliente-servidor hacia la aplicación con coordinación distribuida entre nodos. El cliente envía SQL por el protocolo PostgreSQL a un nodo; internamente, los nodos participantes coordinan transacciones y replicación por rangos mediante Raft. La llamada del cliente es síncrona en el sentido de que espera éxito o error de la operación; la escritura no se confirma antes de obtener el quórum requerido. La replicación, el rebalanceo y la actualización de réplicas ocurren mediante intercambios de red entre nodos. El artículo de Kettaneh et al. describe el mecanismo Leader Leases y su detector distribuido de fallos, mientras el documento de multirregión analiza el efecto de la localidad en las transacciones. Esta descripción es arquitectónica; las capturas de la práctica no exponen los mensajes internos ni su temporización \cite{cockroachlabsDeveloperBasics,cockroachlabsArchitecture,cockroachlabsReplication,kettaneh2026leaderleases,vanbenschoten2022multiregion}.
+
+Cassandra también recibe solicitudes de clientes en un modelo cliente-servidor, pero su clúster opera entre pares: un nodo accesible puede coordinar cada petición y distribuirla a las réplicas. El protocolo nativo transporta mensajes CQL desde el cliente; entre nodos se usa mensajería internodo, y gossip intercambia información de membresía y estado. La respuesta al cliente es síncrona respecto al nivel CQL seleccionado: el coordinador espera el número requerido de respuestas. En paralelo, gossip, hinted handoff y reparación participan en la propagación o convergencia posterior, por lo que el sistema combina comunicación de petición-respuesta con trabajo de fondo asíncrono \cite{apacheCassandraArchitecture,apacheCassandraNative,apacheCassandraMessaging,apacheCassandraDynamo,apacheCassandraRepair}.
 
 \subsection{Tolerancia a fallos}
-% Qué fallos soporta, cómo los detecta, cómo se recupera;
-% al menos un incidente real documentado si existe.
-\pendiente{Tipos de fallos, detección, recuperación e incidente real documentado.}
 
-% =====================================================================
+Con tres votantes para un rango, CockroachDB puede tolerar la pérdida de uno mientras los otros dos se comunican. Si se pierde la mayoría, no confirma nuevas escrituras de ese rango; otras partes del clúster pueden seguir funcionando si conservan sus propios quórums. Raft mantiene el registro replicado y el sistema puede transferir liderazgo y concesiones después de detectar que un nodo no está disponible. El artículo de Kettaneh et al. describe Leader Leases con una detección de vitalidad entre nodos. Como la práctica no inspeccionó métricas internas ni el algoritmo exacto de detección activo, los resultados externos no permiten verificar ese mecanismo directamente \cite{cockroachlabsReplication,kettaneh2026leaderleases}.
+
+En E1, con \texttt{roach2} detenido, CockroachDB mantuvo lectura y escritura; con \texttt{roach2} y \texttt{roach3} detenidos, la consulta no alcanzó quórum. Al iniciar los contenedores, el servicio SQL volvió a responder y las filas confirmadas siguieron disponibles. Sin embargo, \texttt{node status} mostró un estado anómalo de \texttt{roach1} hasta que se reinició; la causa de ese estado no quedó establecida. En E2, con \texttt{roach3} desconectado de la red pero aún encendido, la escritura desde la mayoría funcionó y la lectura actual desde el nodo aislado devolvió \texttt{lost quorum}. Ese escenario comprueba una partición de comunicación, distinta de detener el proceso \cite{cockroachlabsReplication}.
+
+Cassandra detecta disponibilidad de pares a partir de heartbeats y gossip. Si una réplica no está disponible, el coordinador puede conservar una mutación pendiente mediante hinted handoff; ese mecanismo es de mejor esfuerzo. La reparación anti-entropía compara rangos con árboles de Merkle y transmite diferencias, y requiere ejecución operativa con \texttt{nodetool repair}. En E1, con RF=3, \texttt{ONE} y \texttt{QUORUM} funcionaron tras detener un nodo, mientras \texttt{ALL} falló; con dos nodos detenidos, solo \texttt{ONE} completó la lectura y la escritura comprobada. Tras iniciar nodos, el estado llegó a tres \texttt{UN} y \texttt{ALL} leyó las filas confirmadas. En E2, los tres nodos volvieron a \texttt{UN}, pero las consultas posteriores no verifican por sí mismas si se usaron hints o repair; el mecanismo exacto de convergencia quedó sin medir \cite{apacheCassandraDynamo,apacheCassandraRepair,apacheCassandraGuarantees}.
+
+Como caso operativo real, Discord describió que su clúster Cassandra de mensajes llegó a 177 nodos y trillones de mensajes, con latencia impredecible, alta carga de mantenimiento y degradación en cascada asociada a particiones calientes y consultas con consistencia de quórum. La publicación relata una degradación de rendimiento y operación, no una caída total del servicio ni una falla de consenso. El caso muestra que replicación y disponibilidad no evitan problemas producidos por patrones de acceso sesgados y carga; no permite trasladar sus magnitudes a esta práctica \cite{discord2023cassandra}. El análisis de latencia permanece cualitativo porque en los experimentos no se registraron mediciones temporales comparables.
+
 \section{Experimentación propia}
 % =====================================================================
 % Evidencias de autoría 1 y 2: capturas de ejecución real y experimento propio.
@@ -247,21 +272,21 @@ comunicación y tolerancia a fallos de la sección anterior.}
   \centering
   \caption{Comparación entre \sistemaA{} y \sistemaB{}.}
   \label{tab:comparacion}
-  \small
+  \scriptsize
   \begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.4cm}XX@{}}
     \toprule
     Criterio & \sistemaA & \sistemaB \\
     \midrule
-    Transparencias de distribución & \pendiente{} & \pendiente{} \\
-    CAP y PACELC                   & \pendiente{} & \pendiente{} \\
-    Modelo de comunicación         & \pendiente{} & \pendiente{} \\
-    Replicación y consenso         & \pendiente{} & \pendiente{} \\
-    Tolerancia a fallos            & \pendiente{} & \pendiente{} \\
+    Transparencias de distribución & Acceso SQL y ubicación lógica de rangos quedan mayormente ocultos; la pérdida de quórum y los reintentos sí llegan a la aplicación \cite{cockroachlabsArchitecture,cockroachlabsReplication,cockroachlabsDeveloperBasics}. & CQL y tokens ocultan la ubicación, pero el cliente configura el nivel de consistencia y puede recibir errores de disponibilidad \cite{apacheCassandraDynamo,apacheCassandraNative}. \\
+    CAP y PACELC                   & En E2, la mayoría confirmó una escritura; la réplica aislada no pudo completar la lectura actual. Perfil CP y PC/EC para las operaciones actuales, como inferencia del quórum Raft \cite{cockroachlabsReplication}. & E2: ONE operó en ambos lados, QUORUM solo con dos réplicas y ALL falló en la mayoría. La elección del nivel cambia disponibilidad y coordinación; no se midió latencia \cite{apacheCassandraDynamo}. \\
+    Modelo de comunicación         & Cliente-servidor con SQL/PostgreSQL; los nodos coordinan rangos mediante Raft y esperan confirmación de quórum para escrituras \cite{cockroachlabsDeveloperBasics,cockroachlabsReplication}. & Cliente-servidor con CQL hacia un coordinador y comunicación entre pares para réplicas; la respuesta espera el nivel elegido y gossip opera en segundo plano \cite{apacheCassandraNative,apacheCassandraMessaging,apacheCassandraDynamo}. \\
+    Replicación y consenso         & Replicación por rangos con consenso Raft; se requieren dos de tres votantes para conservar el quórum del rango \cite{cockroachlabsReplication}. & Replicación por estrategia de clave de espacio y factor RF=3; los niveles ONE, QUORUM y ALL determinan respuestas requeridas, sin consenso Raft global \cite{apacheCassandraDynamo}. \\
+    Tolerancia a fallos            & E1: con un nodo detenido hubo lecturas y escrituras; con dos, se perdió quórum. E2: la mayoría escribió y la lectura actual aislada falló \cite{cockroachlabsReplication}. & E1 y E2 mostraron disponibilidad dependiente del nivel y de las réplicas alcanzables. Tras reconectar, se verificaron tres nodos UN; el mecanismo exacto de convergencia no se midió \cite{apacheCassandraDynamo,apacheCassandraRepair}. \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\pendiente{Discute la Tabla~\ref{tab:comparacion}: qué diferencias importan y por qué.}
+La diferencia práctica principal es dónde se fija el compromiso de disponibilidad. CockroachDB conserva una regla de quórum Raft para las operaciones actuales; Cassandra permite seleccionar el número de réplicas que deben responder por operación. Los ensayos concuerdan con esa diferencia en las condiciones probadas: CockroachDB dejó de confirmar operaciones al perder mayoría, mientras Cassandra permitió operaciones \texttt{ONE} en ambos lados de la partición. Los resultados no miden rendimiento ni prueban escrituras concurrentes sobre la misma clave \cite{cockroachlabsReplication,apacheCassandraDynamo}.
 
 % =====================================================================
 \section{Postura crítica}
@@ -309,16 +334,47 @@ comunicación y tolerancia a fallos de la sección anterior.}
   \label{fig:esquema-mano}
 \end{figure}
 
+\clearpage
 \section*{Anexo B. Capturas de lectura de las fuentes}
 \addcontentsline{toc}{section}{Anexo B. Capturas de lectura de las fuentes}
-% Al menos 3 capturas de los artículos citados, con fragmentos subrayados
-% o anotados y la página indicada. Cada captura corresponde a una cita.
+% Capturas de los artículos citados en la sección 3, con el fragmento utilizado
+% subrayado en rojo y la página visible. Cada captura corresponde a una cita.
+En cada captura se subrayó el pasaje empleado en la sección~3 y se indican el
+número de la referencia y la página.
+
 \begin{figure}[H]
   \centering
-  % \includegraphics[width=0.8\textwidth]{capturas/lectura-01.png}
-  \marcador{Captura de lectura 1 (fragmento subrayado, página indicada)}{6cm}
-  \caption{\pendiente{Fuente citada (clave del .bib), p.~X: qué fragmento se subrayó y por qué.}}
+  \includegraphics[width=0.92\textwidth]{Capturas/fuentes/fuente_01_vanbenschoten2022_multiregion_p01_subrayado.png}
+  \caption{Fuente citada \cite{vanbenschoten2022multiregion}, p.~1: se subrayó la descripción de la sintaxis declarativa que expresa objetivos de localidad y disponibilidad de los datos y la del protocolo de transacciones que habilita lecturas locales fuertemente consistentes desde cualquier réplica; ambos pasajes sostienen la afirmación de la sección~3.2 sobre configuraciones de localidad y lecturas locales en despliegues multirregión.}
   \label{fig:lectura1}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{Capturas/fuentes/fuente_02_kettaneh2026_leaderleases_p01_subrayado.png}
+  \caption{Fuente citada \cite{kettaneh2026leaderleases}, p.~1: se subrayó la presentación del mecanismo Leader Leases, su integración en el algoritmo de consenso Raft y el detector distribuido de fallos Liveness Fabric; respalda lo expuesto en las secciones 3.3 y 3.4 sobre el arrendamiento del líder y su detección de vitalidad entre nodos.}
+  \label{fig:lectura2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{Capturas/fuentes/fuente_03_ferreira2024_resultados_single_region_p08_subrayado.png}
+  \caption{Fuente citada \cite{ferreira2024consistency}, p.~8: se subrayó el resultado que atribuye a Cassandra una caída del 36\,\% en el rendimiento de escritura y la explicación de la validación de escritura entre réplicas como causa de las lecturas lentas con consistencia fuerte; sustenta la afirmación de la sección~3.2 sobre diferencias de rendimiento asociadas a la configuración de consistencia.}
+  \label{fig:lectura3}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{Capturas/fuentes/fuente_04_silva2023_resumen_p01_subrayado.png}
+  \caption{Fuente citada \cite{silva2023lowpower}, p.~1: se subrayó la evaluación de tres bases de datos distribuidas en un clúster de placas de bajo consumo con Docker Swarm y el resultado de Cassandra con los niveles de consistencia fijados por el cliente; respalda la mención de la sección~3.2 al clúster de placas de bajo consumo.}
+  \label{fig:lectura4}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{Capturas/fuentes/fuente_05_nejati2026_abstract_p01_subrayado.png}
+  \caption{Fuente citada \cite{nejati2026cassandra}, p.~1: se subrayó la presentación de STCC como capa de consistencia externa comparada con los niveles nativos de Cassandra y la descripción de esos niveles como estáticos; sustenta la afirmación de la sección~3.2 sobre la comparación con un middleware causal externo.}
+  \label{fig:lectura5}
 \end{figure}
 
 \end{document}

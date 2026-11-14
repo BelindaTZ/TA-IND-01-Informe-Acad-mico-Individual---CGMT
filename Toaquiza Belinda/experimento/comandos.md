@@ -1,9 +1,8 @@
 # Experimentos — TA-IND-01: CockroachDB vs. Apache Cassandra
 
-> Plantilla: reemplaza todo lo que dice `COMPLETAR` con tus datos reales.
-> Pega comandos y salidas tal como salieron, sin editarlos.
+> Registra los comandos y resultados observados; conserva como no medidos los datos que no aparezcan en las capturas.
 > Antes de cada paso ejecuta `Get-Date` en PowerShell o `date` en Bash para registrar la hora; comprueba también que la terminal permita identificar la sesión.
-> Nombra las capturas como `capturas/AAAA-MM-DD_descripcion.png` y menciónalas aquí y en `BITACORA.md`.
+> Las capturas citadas están en `../Capturas/`.
 
 ---
 
@@ -11,25 +10,35 @@
 
 | Dato | CockroachDB | Apache Cassandra |
 |---|---|---|
-| Versión | COMPLETAR | 5.0.9 (cqlsh) |
-| Imagen Docker | COMPLETAR | `cassandra:5.0` |
-| Nº de nodos | COMPLETAR | 3 (`cass1`, `cass2`, `cass3`), en `dc1` |
-| Factor de replicación | COMPLETAR | 3 en el keyspace `prueba` |
-| Nivel de consistencia usado | COMPLETAR | Preparación: `QUORUM`; pruebas: `ONE`, `QUORUM` y `ALL` |
-| Máquina / SO / Docker | COMPLETAR | PowerShell en `DESKTOP-OCH81AB`; versión de Docker no registrada |
+| Versión | `v26.4.0` (CCL) | `5.0.9 (cqlsh)` |
+| Imagen Docker | `cockroachdb/cockroach:v26.4.0` | `cassandra:5.0` |
+| Nº de nodos | 3 (`roach1`, `roach2`, `roach3`) | 3 (`cass1`, `cass2`, `cass3`), en `dc1` |
+| Factor de replicación | Rango 88: 3 réplicas votantes (`{1,2,3}`) | 3 en el keyspace `prueba` |
+| Nivel de consistencia usado | No se fijó manualmente un nivel; se usaron las operaciones SQL con la configuración predeterminada | Preparación: `QUORUM`; pruebas: `ONE`, `QUORUM` y `ALL` |
+| Máquina / SO / Docker | Windows, PowerShell, `DESKTOP-OCH81AB`; versión de Docker no registrada | Windows, PowerShell, `DESKTOP-OCH81AB`; versión de Docker no registrada |
 
-**Cómo levanté los clústeres:** CockroachDB: COMPLETAR. Cassandra: desde `experimento/cassandra`, ejecuté `docker compose up -d`; `docker compose ps` mostró los tres contenedores activos y saludables.
+**Arranque de CockroachDB:** desde `experimento/cockroachdb`, se crearon los certificados en el volumen `crdb-certs`; luego se ejecutaron `docker compose up -d`, `docker compose ps` y `docker exec -it roach1 cockroach init --certs-dir=/certs --host=roach1:26257`. La salida confirmó `Cluster successfully initialized`; `node status` mostró los tres nodos disponibles.
 
+```powershell
+docker compose up -d
+docker compose ps
+docker exec -it roach1 cockroach init --certs-dir=/certs --host=roach1:26257
+docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257
 ```
-COMPLETAR: comandos de arranque y salida de `docker ps`
+
+Capturas: [generación de certificados](../Capturas/cockroachdb-certificados-generados.png), [inicialización y estado de los tres nodos](../Capturas/cockroachdb-cluster-inicializado-y-verificado.png).
+
+**Arranque de Cassandra:** desde `experimento/cassandra`, se ejecutó `docker compose up -d`; después, `docker compose ps` mostró los tres contenedores saludables y `docker exec -it cass1 nodetool status` confirmó los tres nodos `UN`.
+
+```powershell
+docker compose up -d
+docker compose ps
+docker exec -it cass1 nodetool status
 ```
 
-Captura: `capturas/COMPLETAR.png`
-
-**Limitaciones del entorno:** COMPLETAR (por ejemplo, todos los nodos corren en una sola máquina, así que la latencia de red no es real).
+Capturas: [arranque y verificación de los tres nodos](../Capturas/cassandra-cluster-3-nodos-verificacion-UN.png); [descarga y ejecución inicial de la imagen](../Capturas/apache-cassandra-contenedor-activo.png).
 
 ---
-
 ## Experimento 1 — Caída de nodos (tolerancia a fallos)
 
 **Concepto de la Unidad 1:** tolerancia a fallos, replicación y consenso.
@@ -358,8 +367,8 @@ Captura: [reconexión, tres nodos UN y lectura final con ALL](../Capturas/2026-1
 
 | Situación | CockroachDB | Cassandra |
 |---|---|---|
-| Lado aislado: ¿acepta escrituras? ¿lecturas? | En `roach3`, la lectura de id 1 devolvió `replica unavailable`/`lost quorum` (`SQLSTATE XXUUU`). El INSERT de id 32 se introdujo pero no tiene respuesta visible; su resultado durante el aislamiento no se verificó. | Con `ONE`, lectura de id 1 y escritura/lectura de id 21 funcionaron por `127.0.0.1`; `QUORUM` lectura y escritura fallaron (2 requeridas, 1 viva); `ALL` no se probó. |
-| Lado con mayoría: ¿acepta escrituras? ¿lecturas? | Lectura de id 1 e inserción/lectura de id 31 confirmadas con 2 nodos conectados y rango con mayoría votante. | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 23 y 24 sin error visible; `ALL` lectura y escritura fallaron (3 requeridas, 2 vivas). |
+| Lado aislado: ¿acepta escriturasí ¿lecturasí | En `roach3`, la lectura de id 1 devolvió `replica unavailable`/`lost quorum` (`SQLSTATE XXUUU`). El INSERT de id 32 se introdujo pero no tiene respuesta visible; su resultado durante el aislamiento no se verificó. | Con `ONE`, lectura de id 1 y escritura/lectura de id 21 funcionaron por `127.0.0.1`; `QUORUM` lectura y escritura fallaron (2 requeridas, 1 viva); `ALL` no se probó. |
+| Lado con mayoría: ¿acepta escriturasí ¿lecturasí | Lectura de id 1 e inserción/lectura de id 31 confirmadas con 2 nodos conectados y rango con mayoría votante. | `ONE` y `QUORUM`: lectura de id 1 y escrituras de ids 23 y 24 sin error visible; `ALL` lectura y escritura fallaron (3 requeridas, 2 vivas). |
 | Tras reconectar: ¿datos consistentes? ¿cómo se reconcilian? | Tres nodos `is_available=true` e `is_live=true`; la fila 31 siguió visible y el rango 88 volvió a mostrar votantes {1,2,3}. En una comprobación posterior, id 32 no devolvió filas; eso no establece el resultado de su INSERT durante el aislamiento. | Los tres nodos quedaron `UN`; `ALL` devolvió ids 21, 23 y 24. La reconciliación de escrituras concurrentes y el mecanismo de sincronización no se verificaron. |
 
 ### Interpretación
@@ -369,17 +378,18 @@ Captura: [reconexión, tres nodos UN y lectura final con ALL](../Capturas/2026-1
 - **Alcance:** La práctica evaluó una partición 2+1 con IDs distintos. No se midió latencia, no se probaron escrituras concurrentes sobre una misma clave y no se verificó el mecanismo exacto de sincronización. La ausencia de id 32 en las consultas posteriores no permite concluir que su escritura aislada haya fallado. Las capturas de las 17:26–17:31 documentan la repetición del escenario después de perder la captura original: el nodo aparece primero `false/false` tras reconectarlo y luego los tres nodos aparecen activos. La interpretación queda limitada a esta topología y a las operaciones probadas.
 ---
 
-## Opcional — Latencia (parte EL/EC de PACELC)
-
-Solo si te sobra tiempo. Repite cada medición al menos 10 veces y reporta promedio y variación.
-
-| Sistema | Tipo de lectura / nivel de consistencia | Repeticiones | Promedio | Variación |
-|---|---|---|---|---|
-| COMPLETAR | COMPLETAR | COMPLETAR | COMPLETAR | COMPLETAR |
-
----
-
 ## Limitaciones y reproducibilidad
 
-- Limitaciones generales del experimento: COMPLETAR
-- Cómo repetirlo desde cero (versiones, archivos, comandos): COMPLETAR
+**Limitaciones**
+
+- Los tres nodos de cada sistema corrieron como contenedores en una sola máquina Windows. La prueba ejercita detenciones y aislamiento de red entre contenedores, pero no representa fallas de equipos físicos ni las condiciones de una red distribuida entre máquinas.
+- Se probaron una topología de tres nodos, las versiones e imágenes indicadas y las operaciones descritas en estas tablas. Los resultados no constituyen una prueba de rendimiento ni se generalizan a otras topologías o cargas.
+- No se midieron tiempos de respuesta ni duración exacta de detección y recuperación. Tampoco se probaron escrituras concurrentes sobre la misma clave ni se verificó el mecanismo interno exacto de reconciliación de réplicas.
+- En CockroachDB, la respuesta del `INSERT` de id 32 durante el aislamiento no quedó registrada; que no aparezca en la consulta posterior no determina el resultado de ese intento. En Cassandra, la consulta posterior a la reconexión mostró los ids 21, 23 y 24; el id 22 no quedó visible y el id 26 se consultó sin haber intentado escribirlo.
+
+**Reproducibilidad**
+
+1. Usa Docker Desktop en Windows, PowerShell y los archivos `experimento/cockroachdb/docker-compose.yml` y `experimento/cassandra/docker-compose.yml`. El entorno registrado fue una sola máquina (`DESKTOP-OCH81AB`); la versión de Docker no quedó anotada. Para CockroachDB se requiere el volumen externo `crdb-certs` con certificados de CA, nodos y cliente para `roach1`, `roach2`, `roach3`, `localhost` y `127.0.0.1`.
+2. Desde `experimento/cockroachdb`, ejecuta `docker compose up -d` y `docker compose ps`; inicializa el clúster una sola vez con `docker exec -it roach1 cockroach init --certs-dir=/certs --host=roach1:26257` y verifica los tres nodos con `docker exec -it roach1 cockroach node status --certs-dir=/certs --host=roach1:26257`. La captura [cockroachdb-cluster-inicializado-y-verificado](../Capturas/cockroachdb-cluster-inicializado-y-verificado.png) muestra esos comandos y la salida de inicialización. Desde `experimento/cassandra`, ejecuta `docker compose up -d` y `docker compose ps`; Cassandra puede tardar varios minutos, así que espera hasta que `docker exec -it cass1 nodetool status` muestre las tres direcciones como `UN`. El arranque y la verificación aparecen en [cassandra-cluster-3-nodos-verificacion-UN](../Capturas/cassandra-cluster-3-nodos-verificacion-UN.png). La captura [cockroachdb-certificados-generados](../Capturas/cockroachdb-certificados-generados.png) registra la creación del volumen y los comandos para generar certificados.
+3. Reproduce los pasos de los Experimentos 1 y 2 en el orden descrito, manteniendo los mismos niveles de consistencia, IDs, nombres de contenedor y red. En Cassandra, `cass3` usa originalmente `172.28.0.13` en `cassandra-lab_cassnet`; en CockroachDB, conserva la configuración de red e IP definida en Compose. Registra las horas con `Get-Date` y guarda las salidas y capturas de cada etapa.
+4. Conserva los volúmenes de datos entre la detención y el reinicio de contenedores para observar recuperación. Para repetir desde un estado limpio, elimina los contenedores y volúmenes de datos y vuelve a crear el esquema y los datos iniciales antes de ejecutar las pruebas; los certificados de CockroachDB también deben estar disponibles en `crdb-certs`.
