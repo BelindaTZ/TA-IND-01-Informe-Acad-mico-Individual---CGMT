@@ -1,15 +1,15 @@
 //Referencias fundamentales en el análisis de Amazon DynamoDB y S3 como sistemas distribuidos
 
-@inproceedings{sivasubramanian2012dynamodb,
-  author    = {Sivasubramanian, Swaminathan},
-  title     = {Amazon {DynamoDB}: A Seamlessly Scalable Non-relational Database Service},
-  booktitle = {Proceedings of the 2012 ACM SIGMOD International Conference on Management of Data (SIGMOD '12)},
-  year      = {2012},
-  pages     = {729--730},
-  publisher = {ACM},
-  address   = {New York, NY, USA},
-  doi       = {10.1145/2213836.2213945},
-  url       = {https://doi.org/10.1145/2213836.2213945}
+@inproceedings{bronson2013tao,
+  author    = {Bronson, Nathan and Amsden, Zachary and Cabrera, George and Chakka, Prasad and Dimov, Peter and Ding, Hui and Ferris, Jack and Giardullo, Anthony and Kulkarni, Sachin and Li, Harry and Marchukov, Mark and Petrov, Dmitri and Puzar, Lovro and Song, Yee Jiun and Venkataramani, Venkateshwaran},
+  title     = {{TAO}: Facebook's Distributed Data Store for the Social Graph},
+  booktitle = {2013 USENIX Annual Technical Conference (USENIX ATC 13)},
+  year      = {2013},
+  pages     = {49--60},
+  publisher = {USENIX Association},
+  address   = {San Jose, CA, USA},
+  isbn      = {978-1-931971-01-0},
+  url       = {https://www.usenix.org/conference/atc13/technical-sessions/presentation/bronson}
 }
 
 @inproceedings{decandia2007dynamo,
@@ -24,13 +24,25 @@
   url       = {https://doi.org/10.1145/1294261.1294281}
 }
 
+@inproceedings{sivasubramanian2012dynamodb,
+  author    = {Sivasubramanian, Swaminathan},
+  title     = {Amazon {DynamoDB}: A Seamlessly Scalable Non-relational Database Service},
+  booktitle = {Proceedings of the 2012 ACM SIGMOD International Conference on Management of Data (SIGMOD '12)},
+  year      = {2012},
+  pages     = {729--730},
+  publisher = {ACM},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/2213836.2213945},
+  url       = {https://doi.org/10.1145/2213836.2213945}
+}
+
 @article{abadi2012pacelc,
   author  = {Abadi, Daniel J.},
-  title   = {Consistency Tradeoffs in Modern Distributed Database System Design: CAP is Only Part of the Story},
+  title   = {Consistency Tradeoffs in Modern Distributed Database System Design: {CAP} is Only Part of the Story},
   journal = {Computer},
   volume  = {45},
   number  = {2},
-  pages   = {37--49},
+  pages   = {37--42},
   year    = {2012},
   publisher = {IEEE},
   doi     = {10.1109/MC.2012.33},
@@ -39,7 +51,7 @@
 
 @article{brewer2012cap,
   author  = {Brewer, Eric},
-  title   = {CAP Twelve Years Later: How the ``Rules'' Have Changed},
+  title   = {{CAP} Twelve Years Later: How the ``Rules'' Have Changed},
   journal = {Computer},
   volume  = {45},
   number  = {2},
@@ -50,26 +62,40 @@
   url     = {https://doi.org/10.1109/MC.2012.37}
 }
 
-@article{gilbert2002cap,
-  author  = {Gilbert, Seth and Lynch, Nancy},
-  title   = {Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services},
-  journal = {ACM SIGACT News},
-  volume  = {33},
-  number  = {2},
-  pages   = {51--59},
-  year    = {2002},
-  publisher = {ACM},
-  doi     = {10.1145/564585.564601},
-  url     = {https://doi.org/10.1145/564585.564601}
+@article{hu2014scalable,
+  author  = {Hu, Han and Wen, Yonggang and Chua, Tat-Seng and Li, Xuelong},
+  title   = {Toward Scalable Systems for Big Data Analytics: Technology and Applications},
+  journal = {IEEE Access},
+  volume  = {2},
+  pages   = {652--687},
+  year    = {2014},
+  publisher = {IEEE},
+  doi     = {10.1109/ACCESS.2014.2332453},
+  url     = {https://doi.org/10.1109/ACCESS.2014.2332453}
 }
 
-@misc{aws2017s3outage,
+@misc{awsdynamodbconsistency,
   author       = {{Amazon Web Services}},
-  title        = {Summary of the Amazon S3 Service Disruption in the Northern Virginia Region},
-  year         = {2017},
-  month        = {3},
-  day          = {2},
-  howpublished = {AWS News Blog},
-  url          = {https://aws.amazon.com/blogs/aws/summary-of-the-amazon-s3-service-disruption-in-the-northern-virginia-region/},
-  note         = {Informe oficial post-mortem de la interrupci{\'o}n de Amazon S3 del 28 de febrero de 2017}
+  title        = {DynamoDB Read Consistency},
+  year         = {2026},
+  howpublished = {Amazon DynamoDB Developer Guide},
+  url          = {https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html}
+}
+
+@misc{awsdynamodbglobaltables,
+  author       = {{Amazon Web Services}},
+  title        = {Amazon DynamoDB Global Tables},
+  year         = {2026},
+  howpublished = {AWS Documentation},
+  url          = {https://aws.amazon.com/dynamodb/global-tables/}
+}
+
+@misc{meta2021outage,
+  author       = {{Meta Engineering}},
+  title        = {More Details About the October 4 Outage},
+  year         = {2021},
+  month        = {10},
+  day          = {5},
+  howpublished = {Engineering at Meta},
+  url          = {https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/}
 }
