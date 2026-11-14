@@ -79,3 +79,21 @@ Una entrada por cada día trabajado. Las fechas deben coincidir con los commits 
 - **Problema encontrado:** El primer intento de reconexión usó un orden de argumentos incorrecto. Además, se perdió la captura original de la sesión SQL aislada, así que repetí esa parte del escenario para conservar su evidencia.
 - **Cómo lo resolví:** Reconecté roach3 con su IP original y alias, verifiqué `docker inspect` y repetí `node status` hasta ver los tres nodos activos. Después reproduje el escenario para recuperar la captura perdida de la sesión SQL aislada. La lectura de id 31 confirmó la escritura mayoritaria; el resultado del INSERT de id 32 durante el aislamiento permanece no verificado. Capturas: `Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos.png`, `Capturas/2026-11-13_cockroachdb_e2_01_linea_base_tres_nodos_detalle.png`, `Capturas/2026-11-13_cockroachdb_e2_02_roach3_aislado_estado.png`, `Capturas/2026-11-13_cockroachdb_e2_02_03_aislamiento_y_mayoria_compuesta.png`, `Capturas/2026-11-13_cockroachdb_e2_03_lado_mayoritario_lectura_escritura.png`, `Capturas/2026-11-13_cockroachdb_e2_04_lado_aislado_sesion_sql.png`, `Capturas/2026-11-13_cockroachdb_e2_05_reconexion_fallida_roach3.png`, `Capturas/2026-11-13_cockroachdb_e2_06_reconexion_ip_original.png`, `Capturas/2026-11-13_cockroachdb_e2_07_tres_nodos_activos.png` y `Capturas/2026-11-13_cockroachdb_e2_08_verificacion_final_filas.png`.
 - **Tiempo dedicado:** 35 min
+
+### 2026-11-13
+- **Qué hice:** Redacté la sección 3, «Análisis crítico a la Unidad 1». Reuní en 3.1 la transparencia de distribución, en 3.2 el modelo de comunicación, en 3.3 el CAP/PACELC y en 3.4 la tolerancia a fallos, y cerré con el contraste documental entre CockroachDB y Apache Cassandra, apoyado en las fuentes recopiladas.
+- **Problema encontrado:** El esquema inicial era una lista de definiciones sin hilo argumental, y varias citas habían quedado después del punto final, fuera del formato numérico IEEE solicitado.
+- **Cómo lo resolví:** Reordené los conceptos para que cada apartado desembocara en una comparación concreta entre ambos motores, trasladé las citas antes del punto en todo el documento y eliminé el párrafo que remitía a las capturas, porque esa información correspondía al anexo.
+- **Tiempo dedicado:** 30 min
+
+### 2026-11-13
+- **Qué hice:** Preparé el Anexo B, «Capturas de lectura de las fuentes». Seleccioné cinco pasajes de los artículos citados en la sección 3, recorté la página correspondiente, subrayé el fragmento empleado y redacté el pie de cada figura con su número de referencia y la página.
+- **Problema encontrado:** Las capturas completas de las páginas no permitían ubicar con rapidez el pasaje citado, y los pies indicaban la clave bibliográfica del archivo `.bib` en lugar del número que aparece en el texto.
+- **Cómo lo resolví:** Generé los recortes con Pillow, dibujé el subrayado sobre el fragmento y guardé las versiones editadas junto a las originales en `Capturas/fuentes/`. Después reemplacé las claves de los pies por `\cite{}` para que se renderizaran como números, igual que en el resto de los párrafos.
+- **Tiempo dedicado:** 30 min
+
+### 2026-11-13
+- **Qué hice:** Redacté la sección 4, «Experimentación propia», a partir de `experimento/comandos.md`. Describí el entorno y su justificación, los procedimientos de los dos experimentos con sus comandos, los resultados de cada motor con quince capturas de evidencia, dos tablas resumen, la interpretación, las conclusiones y las limitaciones.
+- **Problema encontrado:** Los comandos y las capturas estaban repartidos en el registro de la práctica y no había mediciones de latencia que permitieran comparar rendimiento. Además, algunos listados largos se partían entre páginas y las rutas de los archivos de composición desbordaban el margen.
+- **Cómo lo resolví:** Ordené el contenido en 4.1 a 4.5, referencié cada afirmación con las fuentes sobre quórum, replicación y niveles de consistencia, y remití a `experimento/comandos.md` para los pasos que no se reproducen en el informe. Compacté los listados, ajusté el ancho de las tablas, registré la versión de Docker empleada y verifiqué que no quedaran errores ni referencias sin resolver en la compilación.
+- **Tiempo dedicado:** 30 min
