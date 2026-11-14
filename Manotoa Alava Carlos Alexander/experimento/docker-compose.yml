@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+  pd:
+    image: pingcap/pd:v7.5.0
+    container_name: tidb-pd
+    ports:
+      - "2379:2379"
+    command:
+      - --name=pd1
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd:2379
+      - --advertise-peer-urls=http://pd:2380
+      - --initial-cluster=pd1=http://pd:2380
+
+  tikv1:
+    image: pingcap/tikv:v7.5.0
+    container_name: tidb-tikv1
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv1:20160
+      - --pd=pd:2379
+    depends_on:
+      - pd
+
+  tikv2:
+    image: pingcap/tikv:v7.5.0
+    container_name: tidb-tikv2
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv2:20160
+      - --pd=pd:2379
+    depends_on:
+      - pd
+
+  tikv3:
+    image: pingcap/tikv:v7.5.0
+    container_name: tidb-tikv3
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv3:20160
+      - --pd=pd:2379
+    depends_on:
+      - pd
+
+  tidb:
+    image: pingcap/tidb:v7.5.0
+    container_name: tidb-server
+    ports:
+      - "4000:4000"
+    command:
+      - --store=tikv
+      - --path=pd:2379
+    depends_on:
+      - tikv1
+      - tikv2
+      - tikv3

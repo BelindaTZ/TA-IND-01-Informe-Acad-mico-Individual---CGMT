@@ -1,0 +1,30 @@
+% Esquema conceptual basado en el boceto y el draw.io originales.
+\begin{tikzpicture}[
+  box/.style={draw,rounded corners=2pt,align=center,minimum height=1.2cm,text width=3.6cm,font=\small,inner sep=5pt},
+  flow/.style={-{Latex[length=2.2mm]},thick},
+  note/.style={font=\scriptsize,align=center,fill=white,inner sep=2pt}]
+\node[box,text width=4.8cm,minimum height=.8cm] (client) at (0,0) {Cliente con protocolo MySQL};
+\node[box,text width=4.8cm,minimum height=1.4cm] (sql) at (0,-2.3) {TiDB Server\\SQL y planes distribuidos\\Coordinación transaccional};
+\node[box,minimum height=1.5cm] (pd) at (-5.4,-5.3) {Placement Driver\\Metadatos y Regions\\TSO y alta disponibilidad};
+\node[box] (kv1) at (0,-5.3) {TiKV 1\\Líder de la Region R1};
+\node[box] (flash) at (5.4,-5.3) {TiFlash opcional\\Réplica columnar\\Raft learner sin voto};
+\node[box] (kv2) at (-2.4,-8.2) {TiKV 2\\Seguidor de R1};
+\node[box] (kv3) at (2.4,-8.2) {TiKV 3\\Seguidor de R1};
+\draw[flow] (client) -- (sql);
+\node[note,anchor=west] at (.2,-1.0) {Solicitud y respuesta SQL\\Balanceador externo opcional};
+\draw[flow,<->] (sql.west) -| (pd.north);
+\node[note,text width=2.4cm] at (-5.4,-3.3) {Metadatos\\y timestamps};
+\draw[flow] (sql) -- (kv1);
+\node[note,anchor=west] at (.2,-3.9) {Operaciones KV\\y pushdown};
+\draw[flow] (sql.east) -| (flash.north);
+\node[note,text width=2.6cm] at (5.4,-3.3) {Lectura analítica\\con validación};
+\draw[flow,dashed] (kv1) -- (flash);
+\node[note,text width=1.3cm] at (2.7,-4.8) {Log\\asíncrono};
+\draw[flow,<->] (kv1.south west) -- (kv2.north);
+\draw[flow,<->] (kv1.south east) -- (kv3.north);
+\node[note] at (-2.5,-6.9) {Raft};
+\node[note] at (2.5,-6.9) {Raft};
+\draw[flow,dotted] (pd.south) |- (kv2.west);
+\node[note,text width=2cm] at (-5.7,-7.1) {Planificación\\de Regions};
+\node[note] at (0,-9.5) {R1 ilustra un grupo; cada TiKV aloja múltiples Regions.\\Quórum de tres votantes: dos. TiFlash no cuenta en esa mayoría.};
+\end{tikzpicture}

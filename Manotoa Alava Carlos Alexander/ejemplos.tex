@@ -1,0 +1,9 @@
+\subsection{Banca móvil como usuario}
+Como usuario he utilizado banca móvil y no sé desde qué servidor se atienden mis peticiones. Para usar la aplicación no tengo que elegir un nodo ni conocer dónde se guarda la información. Esto lo relaciono con la transparencia de ubicación, porque el sistema permite acceder al servicio sin mostrar esos detalles internos.
+
+También he observado, de forma general al utilizar aplicaciones distribuidas, que algunas veces un servicio deja de responder y la falla llega al usuario. Eso me permite entender que ocultar la ubicación y mantener el servicio disponible son cosas diferentes. En el caso de la banca móvil, mi observación se limita a su uso; no conozco su arquitectura interna ni puedo atribuirle TiDB, Raft u otra tecnología sin documentación que lo respalde.
+
+\subsection{TiDB como desarrollador durante la práctica}
+Al realizar el ejercicio pude ver el sistema desde otra perspectiva. Primero se preparó una tabla y después se terminó un contenedor TiKV. En la sesión SQL se aceptó una nueva inserción, como se observa en la Figura~\ref{fig:exp-posterior}. Esto me ayudó a relacionar la replicación con una operación que yo podía ejecutar y consultar.
+
+Antes de revisar los componentes, desde el cliente solo veía las consultas y sus resultados. Al trabajar con los contenedores pude identificar qué parte se estaba deteniendo y cuáles seguían formando parte del entorno. Esta experiencia me permitió comprender mejor la transparencia de fallos, junto con la necesidad de conservar suficientes réplicas y otros servicios disponibles. La prueba tuvo el alcance de una caída local de almacenamiento; no comprobó todos los fallos posibles de TiDB ni el comportamiento de YugabyteDB.

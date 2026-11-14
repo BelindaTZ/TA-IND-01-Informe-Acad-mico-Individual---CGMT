@@ -1,0 +1,11 @@
+/.compilacion/
+/revision/respaldo-antes-de-ordenar.zip
+/*.aux
+/*.bbl
+/*.bcf
+/*.blg
+/*.log
+/*.out
+/*.run.xml
+/*.synctex.gz
+/revision/respaldo-antes-de-lecturas.zip

@@ -1,51 +1,367 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
 \usepackage[margin=2.5cm]{geometry}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{hyperref}
-\usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{lmodern,microtype,graphicx,booktabs,tabularx,array,amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,babel}
+\usepackage{float,placeins,listings,xcolor,csquotes}
+\usepackage[backend=biber,style=ieee,sorting=none,maxbibnames=99]{biblatex}
 \addbibresource{referencias.bib}
+\DefineBibliographyStrings{spanish}{artno={art\adddot}}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\input{datos.tex}
+\setlength{\parskip}{.35em}
+\setlength{\emergencystretch}{2em}
+\renewcommand{\arraystretch}{1.18}
+\AtBeginBibliography{\small\setlength{\bibitemsep}{3pt}\setlength{\bibparsep}{0pt}}
+\lstset{basicstyle=\ttfamily\footnotesize,breaklines=true,columns=fullflexible,keepspaces=true,showstringspaces=false,frame=single,rulecolor=\color{black!25},aboveskip=.7em,belowskip=.7em}
+\newcommand{\captura}[4][.98]{\begin{figure}[H]\centering\includegraphics[width=#1\linewidth,height=.68\textheight,keepaspectratio]{#2}\caption{#3}\label{#4}\end{figure}}
+
+% El resaltado se dibuja sobre el PDF; los PNG originales se conservan intactos.
+\newcommand{\resaltadolectura}[4]{\fill[fill=yellow,fill opacity=.30,draw=none] (#1,#2) rectangle (#3,#4);}
+\newcommand{\capturalectura}[5][.64]{%
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node[anchor=south west,inner sep=0] (lectura) at (0,0) {\includegraphics[width=.98\linewidth,height=#1\textheight,keepaspectratio]{#2}};
+\begin{scope}[x={(lectura.south east)},y={(lectura.north west)}]
+#5
+\end{scope}
+\end{tikzpicture}
+\caption{#3}\label{#4}
+\end{figure}%
+}
+
+\hypersetup{pdftitle={Análisis crítico de TiDB frente a YugabyteDB},pdfauthor={Manotoa Alava Carlos Alexander}}
 
 \begin{document}
-
+\hypersetup{pageanchor=false}
 \begin{titlepage}
-    \centering
-    {\Large \textbf{UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO}}\\[0.3cm]
-    {\large Facultad de Ciencias de la Ingeniería}\\[0.2cm]
-    {\large Carrera de Ingeniería en Software / Telemática}\\[1.5cm]
-    {\large \textbf{Asignatura:} Sistemas Distribuidos}\\[0.3cm]
-    {\large \textbf{Actividad:} TA-IND-01 — Informe Académico Individual}\\[1.5cm]
-    {\LARGE \textbf{Análisis crítico comparativo de Apache Kafka y RabbitMQ}}\\[2cm]
-    \begin{flushleft}
-        \textbf{Estudiante:} [Manotoa Alava Carlos Alexander]\\
-        \textbf{Fecha:} 15 de noviembre de 2026\\
-        \textbf{Repositorio:} \url{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT.git}
-    \end{flushleft}
+\centering
+{\Large\bfseries UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO\par}
+\vspace{.5cm}
+{\large Facultad de Ciencias de la Ingeniería\par}
+{\large \carrera\par}
+\vspace{1.5cm}
+{\large Sistemas Distribuidos\par}
+{\large TA-IND-01 --- Informe académico individual\par}
+\vspace{1.5cm}
+{\LARGE\bfseries Análisis crítico de TiDB frente a YugabyteDB\par}
+\vspace{.6cm}
+{\large Arquitectura, consistencia y tolerancia a fallos\par}
+\vfill
+\begin{flushleft}
+\textbf{Estudiante:} \estudiante\\[.4em]
+\textbf{Curso:} \paralelo\\[.4em]
+\textbf{Fecha:} \fecharevision\\[.4em]
+\textbf{Repositorio:}\\
+\url{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT}
+\end{flushleft}
+\vspace{.8cm}
+Versión revisada para completar las evidencias personales de entrega.
 \end{titlepage}
+\hypersetup{pageanchor=true}
+\setcounter{page}{1}
 
 \section*{Resumen}
-% De 150 a 200 palabras
+Este informe presenta un análisis de TiDB y una comparación con YugabyteDB, dos bases de datos que buscan mantener las transacciones SQL mientras distribuyen la información entre varios nodos. Para comprender su funcionamiento se revisan sus componentes, las transparencias de distribución, CAP, PACELC, los modelos de comunicación y la tolerancia a fallos. También se realizó una práctica local con TiDB 7.5.0 y Docker Compose, formada por un servidor TiDB, un PD y tres TiKV. En las capturas se observa el inicio del entorno, la creación de una tabla, la terminación del contenedor tidb-tikv1 y una inserción aceptada después de esa acción. Este resultado permite relacionar la teoría con una operación real, aunque no demuestra que el servicio nunca se haya interrumpido ni permite medir su tiempo de recuperación. La comparación muestra que ambos sistemas usan Raft para mantener réplicas consistentes, mientras organizan de forma distinta el almacenamiento y las marcas de tiempo. Se concluye que TiDB puede mantener operaciones ante la caída probada, pero su disponibilidad también depende de componentes que no se pusieron a prueba y de cómo se configure el entorno.
 
 \section{Introducción}
+Las bases de datos relacionales permiten trabajar con tablas y mantener garantías transaccionales. Cuando una aplicación crece, también necesita repartir almacenamiento y procesamiento entre varias máquinas. Aquí aparecen los sistemas SQL distribuidos, que buscan conservar esa forma de trabajar mientras coordinan datos y operaciones entre diferentes nodos. TiDB y YugabyteDB son dos herramientas dentro de esta categoría, pero la manera en que organizan sus componentes influye en su comportamiento cuando ocurre un fallo \cite{tidb_arch,yb_arch}.
+
+TiDB separa el procesamiento SQL del almacenamiento y agrega una capa llamada TiFlash. Esta capa organiza los datos por columnas para facilitar consultas analíticas; así se pueden combinar las operaciones diarias con el análisis de información, lo que se conoce como arquitectura HTAP. La revisión de Song y sus colaboradores explica que combinar ambos trabajos también introduce problemas de sincronización, frescura de datos y uso de recursos \cite{song2024survey}.
+
+El sistema tiene aplicaciones fuera del entorno de pruebas. Por ejemplo, PingCAP presenta el caso de WeBank, donde reporta más de 80 clústeres y más de 1,3 PB de datos. Estas cifras corresponden al caso publicado por el proveedor y sirven para ubicar su escala de uso; no son resultados obtenidos en esta práctica \cite{tidb_webank}.
+
+TiDB permite observar de forma local cómo se relacionan los componentes de una base distribuida, por lo que resulta adecuado para este trabajo. YugabyteDB se utiliza como comparación por su interfaz SQL vinculada con PostgreSQL y su almacenamiento distribuido DocDB. El propósito del informe es comprender esas decisiones y juzgar sus límites, apoyándome en documentación oficial, artículos recientes y las capturas del ejercicio que realicé.
+
 \section{Arquitectura del sistema}
+Para entender cómo responde el sistema ante una caída, primero hay que conocer qué hace cada componente. En esta sección se presenta la organización de TiDB y después la de YugabyteDB. Con esa base se puede seguir el recorrido de una consulta y comprender por qué algunos servicios necesitan coordinarse antes de confirmar una operación.
+
+\subsection{TiDB y la separación de sus componentes}
+TiDB divide el trabajo en partes con funciones diferentes. TiDB Server recibe las consultas SQL, las analiza y prepara el plan de ejecución. Aquí se procesa la consulta; las tablas se guardan de forma persistente en la capa de almacenamiento. Esto permite ampliar la capacidad de cómputo sin que cada servidor SQL tenga que conservar una copia local completa de las tablas \cite{tidb_arch}.
+
+\textbf{Placement Driver (PD)} se encarga de conocer cómo están distribuidos los datos y de planificar movimientos de Regions. También proporciona marcas de tiempo mediante el TimeStamp Oracle, conocido como TSO. Se puede entender como una parte de coordinación del sistema, aunque no procesa por sí solo todas las consultas ni almacena los datos de las tablas \cite{tidb_tso}.
+
+\textbf{TiKV} guarda la información como pares clave--valor y la divide en rangos llamados Regions. Cada Region tiene sus propias réplicas y forma un grupo Raft. Un servidor TiKV puede alojar muchas Regions, por lo que no se debe confundir un nodo completo con una única réplica o con un único grupo de consenso \cite{tidb_tikv}.
+
+\textbf{TiFlash} es el componente opcional que mantiene una representación por columnas. Recibe cambios de TiKV como learner de Raft, sin participar en la mayoría que confirma las escrituras. Su actualización es asíncrona, pero antes de responder una lectura comprueba que tenga el avance necesario para el timestamp solicitado. Por eso, una consulta puede tener que esperar a que la réplica se ponga al día \cite{tidb_tiflash}.
+
+El TSO ayuda a ordenar las transacciones. Este servicio utiliza una parte física y otra lógica en sus marcas de tiempo. Su funcionamiento agrega una dependencia de coordinación, pero no significa que cada sentencia SQL produzca siempre una petición independiente al PD. El costo depende de la operación y de las optimizaciones que utilice el sistema \cite{tidb_tso}.
+
+\subsection{YugabyteDB y sus relojes híbridos}
+YugabyteDB organiza sus datos mediante DocDB, un almacenamiento distribuido construido sobre RocksDB. Divide las tablas en fragmentos llamados tablets y los replica mediante grupos Raft. Los servicios YB-TServer alojan las tablets y YB-Master mantiene funciones de catálogo y coordinación. También existe una separación lógica entre la capa de consultas y la de almacenamiento, aunque puedan ejecutarse en el mismo nodo \cite{yb_arch}.
+
+Su interfaz YSQL reutiliza la capa de consultas de PostgreSQL y la conecta con DocDB. Esto facilita trabajar con una interfaz conocida, pero requiere comprobar la compatibilidad de cada aplicación. La interfaz SQL y el motor que mantiene los datos cumplen funciones distintas dentro del conjunto.
+
+Para asignar marcas de tiempo, YugabyteDB usa relojes lógicos híbridos, llamados HLC. Estos combinan la hora física con una parte lógica y se actualizan cuando los nodos intercambian información. Así se mantiene un orden útil para las transacciones sin depender del mismo esquema de TSO centralizado de TiDB. Aun así, continúan existiendo límites de sincronización, tiempos seguros de lectura y posibles reintentos \cite{yb_tx}.
+
+La diferencia principal está en cómo se organiza esa coordinación. Tener HLC no demuestra por sí solo que una consulta sea más rápida, ni elimina la necesidad de esperar a una mayoría de réplicas para determinadas operaciones.
+
+\subsection{Del boceto inicial al diagrama de arquitectura}
+La Figura~\ref{fig:arquitectura} parte del boceto del Anexo~\ref{anexo:boceto} y del diagrama en draw.io. Se distinguen los TiKV votantes y TiFlash como learner.
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{\input{figuras/arquitectura.tex}}
+\caption{Arquitectura conceptual de TiDB basada en el boceto y el diagrama del trabajo. R1 representa una Region con tres réplicas votantes.}
+\label{fig:arquitectura}
+\end{figure}
+
+En el dibujo se puede seguir la consulta desde el cliente hasta TiDB Server y luego hacia el almacenamiento. Las flechas de Raft corresponden a la replicación de una Region; otros grupos pueden tener líderes diferentes. TiFlash y el balanceador forman parte de la explicación general, pero no estuvieron incluidos en el despliegue Docker de la práctica.
+
 \section{Análisis con los conceptos de la Unidad 1}
+Una vez revisada la arquitectura, los conceptos de la unidad permiten explicar qué parte de la distribución queda oculta y qué ocurre cuando la comunicación o un componente falla. Aquí se relacionan esos conceptos con las decisiones de TiDB y YugabyteDB, procurando distinguir las garantías del diseño de lo que se pudo comprobar en el ejercicio.
+
 \subsection{Transparencias de distribución}
-\subsection{Teorema CAP y extensión PACELC}
+Las transparencias permiten que el usuario trabaje con el sistema sin controlar todos sus detalles internos. En los sistemas analizados aparecen en diferentes niveles. Algunas ocultan la ubicación de los datos, mientras que otras solo funcionan bajo ciertas condiciones, como conservar suficientes réplicas disponibles.
+
+\textbf{Transparencia de acceso.} En TiDB se utiliza un cliente compatible con MySQL; en YugabyteDB, YSQL ofrece una interfaz vinculada con PostgreSQL. El usuario puede escribir consultas sin conocer el protocolo interno de replicación. Esto facilita el acceso, aunque la compatibilidad debe revisarse cuando se utilizan funciones específicas de cada motor \cite{tidb_arch,yb_arch}.
+
+\textbf{Transparencia de ubicación.} Al consultar una tabla no se indica en qué TiKV o tablet se encuentra cada fila. El sistema se encarga de localizar los datos. Como usuario se conoce el punto de conexión, pero no hace falta elegir manualmente el servidor que contiene cada registro.
+
+\textbf{Transparencia de migración.} Los datos pueden redistribuirse entre nodos sin cambiar el nombre de la tabla ni reescribir las consultas. En TiDB, PD participa en la planificación de Regions. Este movimiento tiene un costo de trabajo y comunicación, aunque la aplicación no tenga que hacerlo de forma manual \cite{tidb_tikv}.
+
+\textbf{Transparencia de reubicación.} Cuando los datos o el liderazgo cambian durante el uso del sistema, la aplicación intenta seguir trabajando con la misma interfaz. Esto no garantiza que una conexión TCP pueda trasladarse sin efectos a otro servidor. Algunas operaciones pueden necesitar un reintento o una reconexión.
+
+\textbf{Transparencia de replicación.} La aplicación realiza una inserción y el sistema coordina sus réplicas. El usuario no ejecuta una inserción distinta por cada copia. Aquí también es importante diferenciar replicación de una copia de seguridad histórica: una eliminación válida puede propagarse a las réplicas y seguir siendo necesario un respaldo independiente \cite{tidb_storage,huang2024survey}.
+
+\textbf{Transparencia de concurrencia.} Varios usuarios pueden realizar operaciones al mismo tiempo, mientras los mecanismos transaccionales controlan las versiones y los conflictos. MVCC permite trabajar con versiones de los datos; las marcas de tiempo ayudan a establecer qué información corresponde a cada lectura. Los relojes, por sí solos, no resuelven todo el control de concurrencia \cite{yb_tx,huang2024survey}.
+
+\textbf{Transparencia de fallos.} Una caída puede quedar parcialmente oculta si los componentes restantes conservan las condiciones necesarias para continuar. También puede llegar al usuario como una espera o un error. Esta transparencia tiene límites, especialmente cuando se pierde la mayoría de un grupo o falla un servicio del que depende la operación \cite{tidb_ha,yb_repl}.
+
+\subsection{CAP y PACELC}
+CAP y PACELC ayudan a analizar las decisiones que se toman cuando los nodos deben coordinarse. El primero se centra en el problema que aparece durante una partición de red; el segundo permite considerar también el costo de mantener ciertas garantías cuando la red está funcionando.
+
+\subsubsection{Teorema CAP}
+Una partición ocurre cuando partes del sistema dejan de comunicarse. En esa situación, una operación no puede contar a la vez con disponibilidad en todos los lados y con un único orden consistente de lecturas y escrituras. La consistencia de CAP se relaciona con una visión linealizable de las operaciones y no debe confundirse con cualquier nivel de aislamiento SQL ni con la integridad de ACID \cite{huang2024survey}.
+
+En el camino de escritura de TiKV, el líder necesita que una mayoría de las réplicas del grupo participe. Si tres votantes quedan separados en un grupo de dos y otro de uno, la parte con dos puede continuar si conserva las demás dependencias de la transacción. El votante aislado no puede confirmar escrituras por su cuenta. En este alcance se entiende la clasificación CP \cite{tidb_storage,tidb_ha}.
+
+YugabyteDB también usa replicación síncrona mediante Raft en sus grupos principales. Por tanto, el requisito de mayoría también limita sus escrituras consistentes ante una partición. Esto permite compararlos sin suponer que uno mantiene disponibilidad completa en cualquier lado de la red \cite{yb_repl}.
+
+\subsubsection{Modelo PACELC}
+PACELC plantea que, si existe una partición, hay un compromiso entre disponibilidad y consistencia; en condiciones normales también se debe considerar la relación entre latencia y consistencia. Esperar confirmaciones de otros nodos puede aumentar el tiempo de respuesta, incluso cuando no existe una falla.
+
+En este informe se interpreta que las escrituras consistentes de ambos sistemas conservan ese costo de coordinación. El uso de HLC en YugabyteDB no basta para decir que siempre prioriza latencia sobre consistencia. Sus read replicas asíncronas son una opción diferente que permite acercar lecturas, con condiciones de frescura que deben analizarse aparte \cite{yb_tx,yb_read}.
+
+La práctica realizada termina un contenedor de almacenamiento. Con eso se observa una caída concreta, pero no se provoca una partición de red ni se mide el compromiso de latencia de PACELC. Para probar esas situaciones harían falta otros controles y mediciones.
+
 \subsection{Modelos de comunicación}
+La comunicación cambia según la parte del sistema que se esté observando. El cliente envía consultas y espera resultados, mientras que los servicios internos intercambian operaciones y mensajes de replicación. Por eso conviene separar el acceso SQL de la coordinación que ocurre dentro de la base.
+
+\subsubsection{Comunicación entre cliente y servidor}
+El cliente se conecta al punto de acceso SQL y trabaja mediante solicitudes y respuestas sobre la red. En la práctica se utilizó el cliente MySQL dentro de un contenedor para conectarse a TiDB Server. En YugabyteDB, YSQL ofrece una relación similar con sus clientes. La existencia de varios nodos internos no convierte toda la interacción en un modelo peer-to-peer sin roles \cite{tidb_arch,yb_arch}.
+
+\subsubsection{Comunicación interna y replicación}
+Cuando una operación debe modificar datos, el servidor SQL coordina el trabajo con el almacenamiento. Dentro de un grupo Raft, el líder replica cambios y necesita una mayoría para confirmar el registro correspondiente. No es necesario esperar a todos los seguidores para completar cada escritura \cite{tidb_storage,yb_repl}.
+
+Esta coordinación combina RPC y mensajes entre servicios. Además, el consenso de una Region no sustituye el protocolo que necesita una transacción que afecta a varias Regions. Se trata de responsabilidades relacionadas, pero diferentes dentro del sistema \cite{tidb_faq}.
+
+\subsubsection{Comunicación con la capa analítica}
+TiFlash recibe los cambios de TiKV de forma asíncrona como learner. Esto permite separar parte del trabajo analítico, aunque las lecturas deben comprobar el avance de los datos. El sistema puede necesitar esperar para ofrecer la vista correspondiente a una consulta \cite{tidb_tiflash}.
+
+El artículo de Ding y sus colaboradores propone Jasper sobre TiDB para estudiar el equilibrio entre aislamiento de cargas y frescura. Ayuda a comprender que mantener representaciones por filas y columnas tiene costos. Sus mejoras no se presentan aquí como resultados del TiDB 7.5.0 utilizado en la práctica \cite{ding2026jasper}.
+
 \subsection{Tolerancia a fallos}
+La tolerancia a fallos busca que el sistema pueda continuar bajo determinadas caídas. En TiDB y YugabyteDB, Raft ayuda a conservar un registro replicado, pero el funcionamiento completo también depende de otros servicios, de la red y de la distribución de las réplicas.
+
+Para un grupo de tres votantes, la mayoría necesaria es de dos. Si cae un seguidor y el líder mantiene comunicación con otro votante, puede continuar sin una elección nueva. Si cae el líder, los supervivientes necesitan elegir otro. Esta detección y recuperación toman tiempo, por lo que no se debe prometer una respuesta inmediata ante cualquier caída \cite{tidb_storage,yb_repl}.
+
+También existen fallos reales que afectan a varios componentes. El 13 de mayo de 2025, TiDB Cloud publicó un incidente en algunos clústeres Serverless de us-west-2 que duró 22 minutos y 34 segundos. El reporte atribuye los errores a una incompatibilidad de versiones que produjo panic en dos servidores TiKV antiguos \cite{tidb_incidente}.
+
+El incidente muestra que la replicación no elimina todos los problemas operativos. El reporte no detalla los grupos Raft afectados, por lo que no corresponde calcular sus quórums a partir de esa información. Sí permite reconocer que una causa compartida puede afectar a varios servidores a la vez y superar el caso sencillo de perder un solo proceso.
+
 \section{Experimentación propia}
+Los conceptos anteriores se llevaron a una práctica local para observar qué pasa al detener un componente de almacenamiento. La ejecución final que respaldan las nuevas capturas se hizo con Docker Compose y TiDB 7.5.0. Los intentos previos con TiUP y el primer error de Docker se conservan como antecedentes, pero no se mezclan con los resultados de esta corrida.
+
+\subsection{Entorno y objetivo de la prueba}
+El objetivo fue comprobar si se podía insertar y consultar información después de terminar uno de los tres contenedores TiKV. El archivo Compose utilizado se incluye sin modificar en \path{experimento/docker-compose.yml}. En él aparecen un contenedor PD, un TiDB Server y tres TiKV, todos con imágenes de versión 7.5.0.
+
+Esta configuración simplifica el entorno para trabajar desde mi equipo con CachyOS. No incluye TiFlash, un balanceador ni varias máquinas físicas. Tampoco replica PD ni TiDB Server. Por eso, aunque permita observar una caída de TiKV, no representa un despliegue con alta disponibilidad en todas sus capas.
+
+La hipótesis de la prueba es que, si las Regions mantienen la mayoría necesaria y los demás servicios siguen disponibles, una operación puede completarse después de perder un TiKV. Las capturas permiten revisar el estado de los contenedores y la respuesta SQL; no muestran un inventario completo de los peers de cada Region.
+
+\subsection{Desarrollo del ejercicio}
+El ejercicio se presenta en el orden de ejecución: levantar el entorno, preparar la base, provocar la caída y comprobar una operación posterior. Cada captura se coloca junto a la parte que explica, para que se pueda seguir la relación entre el comando utilizado y lo que realmente aparece en su salida.
+
+\subsubsection{Inicio del clúster}
+Primero se levantaron los servicios y se consultó su estado. En la Figura~\ref{fig:exp-topologia} se observan los contenedores \texttt{tidb-pd}, \texttt{tidb-server} y los tres \texttt{tidb-tikv}. También aparece la identificación de Carlos, el host y la fecha del equipo. El aviso sobre el campo \texttt{version} del Compose no impidió que los contenedores mostraran estado Up.
+
+\begin{lstlisting}
+sudo docker compose up -d
+sudo docker compose ps
+\end{lstlisting}
+
+\captura{capturas/experimento/01-topologia.png}{Inicio del entorno Docker Compose y listado de sus cinco contenedores. La captura muestra usuario, host y fecha local.}{fig:exp-topologia}
+
+El estado Up indica que los contenedores estaban iniciados en ese momento. La conexión SQL del paso siguiente es la que permite comprobar que TiDB también estaba atendiendo consultas.
+
+\subsubsection{Preparación de la base de datos}
+Después se utilizó un contenedor con el cliente MySQL para conectarse al servidor TiDB mediante la red \texttt{experimento\_default}. La Figura~\ref{fig:exp-inicial} muestra que el servidor respondió con la versión \texttt{8.0.11-TiDB-v7.5.0}. El nombre MySQL corresponde al cliente y al protocolo compatible; la base que atiende la conexión es TiDB.
+
+\begin{lstlisting}
+sudo docker run -it --rm --network experimento_default mysql:8.0 mysql -h tidb-server -P 4000 -u root
+\end{lstlisting}
+
+Dentro de esa sesión se creó la base y la tabla:
+
+\begin{lstlisting}[language=SQL]
+CREATE DATABASE experimento;
+USE experimento;
+CREATE TABLE prueba (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  dato VARCHAR(100),
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+\end{lstlisting}
+
+\captura{capturas/experimento/02-dato-inicial.png}{Conexión del cliente MySQL al servidor TiDB y creación de experimento.prueba. Las respuestas confirman la creación de la base y la tabla.}{fig:exp-inicial}
+
+El primer dato se identifica después en la consulta final como \texttt{Dato antes de la caida}. La captura de preparación no incluye la orden que insertó esa fila, así que no se reconstruye su salida como si estuviera disponible.
+
+\subsubsection{Caída de un TiKV}
+Para provocar el fallo se terminó el contenedor \texttt{tidb-tikv1} y se consultó su estado. La Figura~\ref{fig:exp-fallo} muestra el comando, el nombre del contenedor y el estado \texttt{Exited (137)}. La documentación de Docker indica que \texttt{docker kill} envía SIGKILL por defecto al proceso principal del contenedor \cite{docker_kill}.
+
+\begin{lstlisting}
+sudo docker kill tidb-tikv1
+sudo docker ps -a --filter name=tidb-tikv1
+\end{lstlisting}
+
+\captura{capturas/experimento/03-caida-tikv.png}{Terminación de tidb-tikv1 y comprobación de su estado Exited (137). La identificación registra el 13 de noviembre de 2026 a las 19:01:09, con zona local -05.}{fig:exp-fallo}
+
+Esta acción afecta al almacenamiento, mientras PD y el servidor SQL se mantienen dentro del entorno de la prueba. La captura no indica qué Regions tenían su líder en ese contenedor; por eso no se afirma que necesariamente haya ocurrido una elección nueva.
+
+\subsubsection{Operación después de la caída}
+Luego se volvió a la sesión SQL y se insertó un registro diferente. La Figura~\ref{fig:exp-posterior} muestra la respuesta \texttt{Query OK, 1 row affected} y una consulta con dos filas. La primera contiene el dato anterior y la segunda el texto que identifica la inserción posterior.
+
+\begin{lstlisting}[language=SQL]
+INSERT INTO prueba (dato)
+VALUES ('Insertado exitosamente tras la caida del nodo');
+SELECT * FROM prueba;
+\end{lstlisting}
+
+\captura{capturas/experimento/04-operacion-tras-caida.png}{Inserción aceptada y consulta con los registros anterior y posterior a la caída. El cliente muestra 0,01 s para el INSERT y dos filas en el SELECT.}{fig:exp-posterior}
+
+La consulta final conserva las fechas SQL que aparecen en la imagen: \texttt{2026-11-13 23:59:28} y \texttt{2026-11-14 00:02:53}. El comando del fallo muestra otra representación horaria del equipo. Sin una consulta de las zonas horarias no se comparan directamente esos relojes ni se calcula con ellos un tiempo de recuperación.
+
+\subsection{Interpretación de lo observado}
+La secuencia muestra una terminación de TiKV y una inserción que fue aceptada después dentro del ejercicio presentado. Este resultado es compatible con el funcionamiento esperado cuando sobreviven las réplicas necesarias y los demás servicios continúan disponibles. Permite relacionar la replicación y la tolerancia a fallos con una operación concreta.
+
+Sin embargo, las imágenes no muestran el estado de los peers de cada Region ni un segundo listado de contenedores junto a la consulta final. Por eso, el quórum se utiliza para explicar el mecanismo del sistema, no como una medición directa tomada durante la prueba. Tampoco se midió si existió una pausa entre el fallo y la recuperación.
+
+Los 0,01 segundos que informa el cliente corresponden a la ejecución de ese INSERT, no al tiempo total que tardó el sistema en recuperarse. Para obtener ese último dato habría que registrar operaciones de forma continua antes, durante y después de la caída.
+
+La prueba también tiene límites por su entorno. Todos los contenedores comparten una máquina, existe un solo PD y un solo TiDB Server, y el Compose no declara volúmenes persistentes. Se probó la caída de un contenedor, no la pérdida del equipo completo ni la conservación de datos después de eliminar los contenedores. Los comandos observados y sus resultados se documentan en \path{experimento/COMANDOS-Y-RESULTADOS.md}.
+
 \section{Ejemplos del entorno del estudiante}
+La distribución también se puede relacionar con aplicaciones que utilizo y con la experiencia de trabajar directamente sobre TiDB. Estos ejemplos permiten distinguir lo que se percibe desde una interfaz de usuario de los detalles que aparecen al revisar el funcionamiento interno de un sistema.
+
+\input{ejemplos.tex}
+
 \section{Análisis comparativo}
+TiDB y YugabyteDB resuelven el problema de distribuir una base SQL, pero organizan de forma diferente sus componentes y el manejo del tiempo. La Tabla~\ref{tab:comparacion} reúne ocho criterios de la unidad para revisar esas diferencias. La comparación de YugabyteDB se apoya en documentación; no se realizó una prueba equivalente de ese sistema en este trabajo.
+
+\begin{table}[H]
+\centering\small
+\caption{Comparación de TiDB y YugabyteDB según los conceptos de la unidad.}
+\label{tab:comparacion}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.6cm}XX}
+\toprule
+\textbf{Criterio} & \textbf{TiDB} & \textbf{YugabyteDB}\\
+\midrule
+Acceso & Cliente compatible con MySQL. & YSQL vinculado con PostgreSQL.\\
+Ubicación y movimiento & Distribuye datos en Regions; PD participa en su planificación. & Distribuye datos en tablets; YB-Master coordina catálogo y otras tareas.\\
+Replicación & Raft por Region; TiFlash puede actuar como learner. & Raft por tablet; permite read replicas adicionales.\\
+Concurrencia y tiempo & Versiones de datos y timestamps proporcionados por PD. & Versiones de datos y relojes lógicos híbridos.\\
+CAP en escritura & Necesita una mayoría para confirmar en el camino consistente. & La replicación principal también necesita mayoría.\\
+PACELC & Mantener garantías implica coordinación aun sin partición. & HLC no elimina el quórum; las lecturas asíncronas tienen otro alcance.\\
+Comunicación & SQL cliente--servidor y comunicación interna entre servicios. & SQL cliente--servidor y comunicación entre capas y tablets.\\
+Tolerancia a fallos & Puede continuar ante pérdidas que conserven el quórum y las demás dependencias. & Mantiene la misma necesidad de mayoría en cada tablet.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+La tabla se apoya en las descripciones de almacenamiento, transacciones y replicación de ambos sistemas \cite{tidb_tikv,tidb_storage,yb_arch,yb_tx,yb_repl,yb_read}. Una coincidencia importante es que ambos utilizan Raft, así que la diferencia no se reduce a decir que uno es consistente y el otro busca responder rápido. Hay que considerar qué operación se hace, cómo están ubicadas las réplicas y qué garantías se han configurado.
+
+TiDB presenta una separación clara entre la capa SQL, TiKV y la opción analítica TiFlash. Esto permite ampliar y estudiar cada parte con funciones distintas. YugabyteDB, por su parte, combina YSQL con DocDB y utiliza HLC para el manejo del tiempo. Esta organización puede resultar cercana a aplicaciones que ya utilizan PostgreSQL, pero la migración necesita comprobar sus funciones y comportamiento.
+
+La práctica permite hablar de una operación local de TiDB después de una caída, pero no da datos para afirmar que supera a YugabyteDB en rendimiento. Una comparación de ese tipo necesitaría la misma carga, recursos, datos y condiciones de fallo en ambos sistemas.
+
 \section{Postura crítica}
+Después de revisar el diseño y la práctica, considero que TiDB ofrece herramientas útiles para distribuir una base SQL, pero su conveniencia depende del problema que se quiere resolver. Aquí se presentan las fortalezas que encuentro y los aspectos que tendría que revisar antes de elegirlo para una aplicación real.
+
+\subsection{Fortalezas del diseño}
+La separación de componentes ayuda a comprender dónde se procesa una consulta, dónde se guardan los datos y quién coordina su ubicación. También permite distribuir capacidad entre distintos servicios. En la práctica fue posible provocar una caída en el almacenamiento y obtener después una inserción aceptada, algo que hizo más claro el papel de las réplicas.
+
+La opción de TiFlash resulta interesante cuando se necesita combinar transacciones y análisis. Sin embargo, mantener dos representaciones de datos tiene un costo. Song y sus colaboradores describen problemas de sincronización y aislamiento de cargas, mientras Jasper estudia una organización adaptativa sobre TiDB para equilibrar aislamiento y frescura \cite{song2024survey,ding2026jasper}. Por eso, la ventaja analítica debe valorarse según las consultas reales de la aplicación.
+
+\subsection{Limitaciones y contextos de uso}
+Tener varios nodos también significa administrar más servicios y comunicaciones. Una transacción puede depender de más de un grupo, y la ubicación de las réplicas influye en el tiempo que tarda en confirmarse. Para una aplicación pequeña, que funciona bien con una base en una sola máquina, esa complejidad puede ser difícil de justificar si no existe una necesidad concreta de distribución.
+
+Tampoco elegiría una operación de escritura basada en quórum esperando que cualquier lado de una partición pueda seguir confirmando cambios. Si el requisito es trabajar de forma independiente durante desconexiones prolongadas, se debe analizar otro diseño o ajustar las garantías esperadas. Este compromiso se relaciona directamente con lo revisado en CAP y PACELC.
+
+El incidente de TiDB Cloud y las limitaciones del Compose local recuerdan que la disponibilidad depende de todo el entorno. En una instalación real tendría que revisar dominios de fallo, redundancia de PD y SQL, respaldos, persistencia y procedimientos de actualización. Replicar datos es una parte importante de la solución, pero no reemplaza esas decisiones operativas.
+
 \section{Conclusiones}
+La revisión permitió comprender que TiDB y YugabyteDB comparten mecanismos de consenso, aunque organizan de otra forma el almacenamiento y las marcas de tiempo. La diferencia entre TSO y HLC ayuda a explicar su coordinación, pero no basta para afirmar que uno siempre es más rápido o que el otro ofrece mejores garantías en cualquier situación.
+
+En el ejercicio se levantaron un PD, un TiDB Server y tres TiKV con Docker Compose. Las capturas muestran la terminación de \texttt{tidb-tikv1} y una inserción aceptada después en la sesión SQL, donde quedaron visibles dos registros. Esto permitió relacionar la tolerancia a fallos con un resultado propio y concreto, dentro del alcance documentado.
+
+También quedó claro que la prueba tiene límites. No se registró el estado de cada Region, no se midió de forma continua la disponibilidad y no se probaron fallos del host completo, PD o TiDB Server. Por esa razón, el resultado no se utiliza para prometer recuperación inmediata ni disponibilidad total.
+
+Mi conclusión es que TiDB resulta una opción interesante cuando existe una necesidad real de distribuir SQL y combinar tipos de carga. Para elegirlo en un proyecto tendría que valorar esas necesidades junto con el costo de coordinación y operación. La práctica ayudó a entender ese compromiso desde el funcionamiento del sistema y no solo desde la definición de los conceptos.
+
 \section{Declaración de uso de inteligencia artificial}
+Utilicé OpenAI Codex, agente basado en GPT-6, para organizar el material, revisar conceptos y referencias, preparar LaTeX e incorporar las lecturas con resaltados. Las fuentes se contrastaron con documentación y registros editoriales. La práctica y las capturas son material propio; sus datos se conservaron y los resaltados se añadieron sobre el PDF. Antes de entregar debo revisar, comprender y poder explicar el texto y sus fuentes.
 
+\FloatBarrier
+\label{fin:contenido}
+\clearpage
 \printbibliography[title={Referencias}]
-
+\clearpage
 \appendix
-\section{Evolución del esquema de arquitectura}
-\section{Evidencias de lectura de fuentes}
+\section{Esquema inicial a mano}\label{anexo:boceto}
+El bosquejo de la Figura~\ref{fig:boceto} fue la base para organizar los componentes y pasar después al diagrama digital. En él se distinguen el cliente, la capa SQL, PD, TiKV y TiFlash. La fotografía original se conserva sin alterar; no muestra nombre ni fecha visibles, por lo que esa identificación de la evidencia sigue pendiente.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.82\linewidth,height=.76\textheight,keepaspectratio]{figuras/boceto-original.jpeg}
+\caption{Boceto original de la arquitectura de TiDB, utilizado como punto de partida del diagrama del informe.}
+\label{fig:boceto}
+\end{figure}
+
+\clearpage
+\section{Evidencias de lectura de las fuentes}\label{anexo:lecturas}
+Las siguientes capturas relacionan tres lecturas en inglés y de acceso gratuito con las ideas del informe. El resaltado amarillo identifica los fragmentos sobre replicación, consistencia y procesamiento HTAP; cada figura indica la página correspondiente de la fuente.
+
+\subsection{Replicación, consistencia y rendimiento}
+El artículo de Ferreira y sus colaboradores permite comprender que mantener réplicas también requiere coordinación. En el resumen de la página 1 se explica que la estrategia de replicación, la latencia de la red y el nivel de consistencia pueden influir en el rendimiento \cite{ferreira2024consistency}. La Figura~\ref{fig:lectura-ferreira} destaca esa relación. Sus experimentos estudian MongoDB, Redis y Cassandra, por lo que no se presentan como resultados de TiDB.
+
+\capturalectura[.60]{capturas/lecturas/01-ferreira.png}{Resumen de Ferreira y colaboradores, página 1. Se resalta la relación entre replicación, latencia, consistencia y rendimiento.}{fig:lectura-ferreira}{%
+\resaltadolectura{0.101695}{0.628109}{0.905367}{0.733831}
+\resaltadolectura{0.101695}{0.610697}{0.233051}{0.626866}
+}
+
+\clearpage
+\subsection{Aislamiento y frescura en HTAP}
+El artículo de Ding y sus colaboradores presenta Jasper, una propuesta implementada sobre TiDB para estudiar el equilibrio entre aislamiento de cargas y frescura de los datos \cite{ding2026jasper}. En la introducción de la página 1142 se explica que mantener datos por filas y columnas genera un costo de sincronización, mientras que utilizar una sola representación puede aumentar la competencia por recursos. La Figura~\ref{fig:lectura-ding} destaca esas ideas. Las mejoras de Jasper no se atribuyen a la instalación utilizada en mi práctica.
+
+\capturalectura[.64]{capturas/lecturas/02-ding.png}{Introducción de Ding y colaboradores, página 1142 (primera del PDF). Se resaltan el costo de sincronización y el compromiso entre aislamiento y frescura.}{fig:lectura-ding}{%
+\resaltadolectura{0.513819}{0.137203}{0.976131}{0.435356}
+\resaltadolectura{0.513819}{0.071240}{0.976131}{0.133245}
+\resaltadolectura{0.513819}{0.048813}{0.649497}{0.068602}
+}
+
+\clearpage
+\subsection{Diseños y compromisos de HTAP}
+La revisión de Song y sus colaboradores clasifica los diseños HTAP y explica problemas que aparecen al combinar transacciones y análisis \cite{song2024survey}. En la página 1486 se identifican dificultades como la sincronización de datos, la consistencia y el aislamiento entre cargas. La Figura~\ref{fig:lectura-song} destaca el párrafo que reúne esos problemas. Estas ideas permiten comprender por qué separar formatos y recursos puede ofrecer ventajas y también introducir trabajo adicional de coordinación, como se analiza en la introducción y la postura crítica.
+
+\capturalectura[.67]{capturas/lecturas/03-song.png}{Introducción de Song y colaboradores, página 1486 (segunda del PDF). Se resaltan los problemas y compromisos de los diseños HTAP con formatos híbridos.}{fig:lectura-song}{%
+\resaltadolectura{0.082831}{0.222222}{0.492470}{0.445693}
+}
 
 \end{document}
