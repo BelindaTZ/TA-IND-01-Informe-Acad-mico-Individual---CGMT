@@ -134,13 +134,56 @@
 % =====================================================================
 % RESUMEN (150 a 200 palabras)
 % =====================================================================
+\clearpage
 \section*{Resumen}
-\pendiente{Escribe entre 150 y 200 palabras: sistema analizado (\sistemaA), enfoque
-(comparación con \sistemaB, conceptos de la Unidad~1, experimento propio) y
-conclusiones principales. Redáctalo al final, cuando ya tengas los resultados.}
+\vspace{0.4cm}
+{\large\setstretch{1.4}
+\noindent Este informe analiza críticamente a \sistemaA{} frente a \sistemaB{} a
+partir de los conceptos de la Unidad~1: transparencias de distribución, modelos de
+comunicación, teorema CAP y PACELC, y tolerancia a fallos. El estudio combina una
+revisión documental de documentación técnica y literatura académica con dos
+experimentos propios sobre clústeres de tres nodos ejecutados con Docker. El primero
+detiene uno y dos nodos para observar lecturas y escrituras; el segundo aísla un
+nodo de la red para construir una partición 2+1. Los resultados muestran que
+\sistemaA{} conserva la coherencia mediante quórum Raft y deja de confirmar
+operaciones al perder la mayoría, mientras que \sistemaB{} mantiene la
+disponibilidad según el nivel de consistencia elegido: \texttt{ONE} operó con dos
+nodos caídos y en ambos lados de la partición, y \texttt{QUORUM} y \texttt{ALL}
+fallaron cuando faltaron réplicas. El análisis concluye que la diferencia principal
+no está en la topología, sino en dónde se fija el compromiso entre consistencia y
+disponibilidad, y que la elección depende del requisito de la aplicación. Se
+reconoce como limitación que el ensayo no midió latencia ni escrituras concurrentes
+sobre una misma clave.\par}
 
-\medskip
-\noindent\textbf{Palabras clave:} \pendiente{4 a 6 palabras clave}.
+\vspace{0.8cm}
+\noindent\textbf{Palabras clave:} sistemas distribuidos; consistencia;
+disponibilidad; tolerancia a fallos; \sistemaA{}; \sistemaB{}.
+
+\vspace{0.5cm}
+{\large\bfseries Abstract\par}
+\vspace{0.2cm}
+{\large\setstretch{1.4}
+\noindent This report critically analyzes \sistemaA{} against \sistemaB{} using the
+concepts of Unit~1: distribution transparency, communication models, the CAP and
+PACELC theorems, and fault tolerance. The study combines a documentary review of
+technical documentation and academic literature with two experiments on three-node
+clusters running on Docker. The first stops one and two nodes to observe reads and
+writes; the second isolates a node from the network to build a 2+1 partition. The
+results show that \sistemaA{} preserves consistency through Raft quorum and stops
+confirming operations when it loses the majority, whereas \sistemaB{} maintains
+availability according to the chosen consistency level: \texttt{ONE} operated with
+two nodes down and on both sides of the partition, while \texttt{QUORUM} and
+\texttt{ALL} failed when replicas were missing. The analysis concludes that the main
+difference lies not in the topology but in where the trade-off between consistency
+and availability is fixed, and that the choice depends on the application
+requirement. A limitation is acknowledged: the experiment did not measure latency or
+concurrent writes to the same key.\par}
+
+\vspace{0.4cm}
+\noindent\textbf{Keywords:} distributed systems; consistency; availability; fault
+tolerance; \sistemaA{}; \sistemaB{}.
+\vspace*{\fill}
+\clearpage
 
 % =====================================================================
 \section{Introducción}
@@ -149,8 +192,69 @@ conclusiones principales. Redáctalo al final, cuando ya tengas los resultados.}
 % - Quién lo usa y a qué escala opera
 % - Por qué lo elegiste
 % - Objetivo del informe y cómo se organiza el documento
-\pendiente{Problema que resuelve \sistemaA, quién lo usa, escala de operación,
-motivo de la elección y organización del informe.}
+Las aplicaciones actuales rara vez dependen de un único servidor. Los servicios de
+banca, comercio, mensajería y trámites públicos atienden a millones de usuarios y
+necesitan conservar los datos aunque un equipo falle, una red se corte o la demanda
+crezca de un día para otro. Para responder a esa exigencia surgieron las bases de
+datos distribuidas, que reparten la información entre varios nodos y coordinan las
+operaciones entre ellos. Esa coordinación introduce un problema que la Unidad~1
+estudia de forma explícita: cuando la red falla, el sistema debe elegir entre
+mantener la coherencia de lo que confirma o seguir respondiendo con la información
+disponible. El teorema CAP y el modelo PACELC describen ese compromiso, y las
+decisiones de diseño de cada motor lo reflejan en su arquitectura
+\cite{cockroachlabsReplication,apacheCassandraDynamo}.
+
+\sistemaA{} representa la familia de bases de datos SQL distribuidas que conservan
+las transacciones y el lenguaje relacional. Su arquitectura organiza los datos en
+rangos replicados y utiliza consenso Raft para confirmar cada escritura con la
+mayoría de las réplicas votantes; además, ofrece funciones para desplegar tablas en
+varias regiones y atender lecturas en réplicas de seguidor
+\cite{cockroachlabsArchitecture,vanbenschoten2022multiregion}. \sistemaB{}, en
+cambio, proviene del modelo Dynamo y de las bases de datos de columnas anchas: los
+datos se distribuyen por tokens, cada clave tiene un factor de replicación y el
+cliente decide cuántas réplicas deben responder mediante niveles como \texttt{ONE},
+\texttt{QUORUM} y \texttt{ALL} \cite{apacheCassandraDynamo}. Su adopción en
+servicios de gran escala, como el almacenamiento de mensajes de Discord, muestra que
+el modelo sostiene volúmenes muy altos, aunque también expone el costo operativo de
+mantenerlo \cite{discord2023cassandra}.
+
+La elección entre ambos motores suele resolverse con afirmaciones generales, del tipo
+«uno es más consistente» o «el otro es más disponible», sin analizar qué operación se
+ejecuta, con cuántas réplicas y bajo qué falla. El problema que aborda este informe es
+precisamente ese: determinar qué garantías ofrece cada sistema en condiciones
+concretas y qué costo asume la aplicación por ellas. Por eso el objetivo general es
+analizar críticamente a \sistemaA{} frente a \sistemaB{} a partir de los conceptos de
+la Unidad~1, la documentación técnica y una ejecución real. Los objetivos específicos
+son describir la arquitectura de \sistemaA{}, contrastar ambos motores con los
+criterios de transparencia, comunicación, CAP/PACELC y tolerancia a fallos, diseñar y
+ejecutar dos experimentos que pongan a prueba la caída de nodos y la partición de red,
+y formular una postura argumentada sobre los contextos en los que cada uno resulta
+adecuado.
+
+La metodología combina dos fuentes de evidencia. La primera es documental: se
+revisaron la documentación oficial de ambos proyectos, artículos académicos sobre
+consistencia y rendimiento en bases NoSQL, y casos de operación a gran escala
+\cite{apacheCassandraGuarantees,ferreira2024consistency,discord2023cassandra}. La
+segunda es experimental: se levantaron dos clústeres de tres nodos con Docker sobre
+una misma máquina, se detuvieron nodos y se aisló uno de la red para observar
+lecturas y escrituras en cada configuración. Los comandos, las horas y las salidas
+completas están en \texttt{experimento/comandos.md}, y las capturas de evidencia en
+la carpeta \texttt{Capturas}. Cada paso se registró antes y después de ejecutarlo,
+con la terminal identificable y la hora visible, y las capturas se contrastaron con
+las salidas de la consola. El alcance se limita a esas condiciones: una topología,
+unas versiones y unas operaciones, sin mediciones de latencia ni escrituras
+concurrentes sobre una misma clave.
+
+El documento se organiza en ocho secciones. La segunda describe la arquitectura de
+\sistemaA{}; la tercera aplica los conceptos de la Unidad~1; la cuarta presenta los
+dos experimentos con su procedimiento, resultados y conclusiones; la quinta relaciona
+lo observado con dos servicios de uso cotidiano; la sexta compara ambos motores con
+cinco criterios; la séptima expone la postura crítica con fortalezas, limitaciones y
+contextos de uso; y la octava recoge las conclusiones. Los anexos conservan el
+esquema inicial y las capturas de lectura de las fuentes. Los archivos de
+composición y el registro de comandos quedan en el repositorio para reproducir el
+ensayo.
+\clearpage
 
 % =====================================================================
 \section{Arquitectura del sistema}
@@ -1046,16 +1150,50 @@ decisión responsable no depende de la etiqueta del motor, sino de qué se está
 dispuesto a ceder cuando la red falla.
 
 % =====================================================================
+\clearpage
 \section*{Declaración de uso de inteligencia artificial}
 \addcontentsline{toc}{section}{Declaración de uso de inteligencia artificial}
 % =====================================================================
 % Herramienta, versión, para qué se usó y cómo se verificó lo obtenido
 % (o declaración de que no se usó). Debe reflejar lo que realmente hiciste.
-\pendiente{Herramienta y versión, para qué la usaste y cómo verificaste lo obtenido.}
+Para la elaboración de este informe utilicé asistentes de inteligencia artificial
+generativa basados en modelos de lenguaje, en particular un agente de programación
+(OpenCode, con el modelo DeepSeek V4.1 Flash) y asistentes conversacionales, durante
+noviembre de 2026. Su uso se limitó a las tareas de apoyo que se detallan a
+continuación.
+
+\begin{itemize}
+  \item \textbf{Búsqueda de fuentes.} La inteligencia artificial propuso documentos
+  técnicos y artículos académicos para sustentar la comparación. Revisé manualmente
+  cada fuente, comprobé que el contenido citado existiera en el documento original y
+  verifiqué que la referencia correspondiera a la publicación indicada antes de
+  incorporarla a \texttt{Referencias/referencias.bib}.
+  \item \textbf{Creación de plantillas.} Se empleó para generar las plantillas del
+  informe en LaTeX y los archivos de trabajo en Markdown, incluida la estructura de
+  secciones, el formato de las tablas, los listados de comandos y la organización de
+  la bitácora.
+  \item \textbf{Comandos y resolución de errores.} Durante la experimentación se usó
+  para proponer comandos de Docker, \texttt{nodetool} y la consola SQL, y para
+  interpretar mensajes de error y consideraciones de configuración. Cada comando se
+  ejecutó en mi equipo y su salida se contrastó con las capturas de evidencia; las
+  decisiones sobre qué probar y cómo interpretar los resultados fueron mías.
+  \item \textbf{Redacción formal.} A partir del contenido de los experimentos, de mis
+  resultados y de mis propias palabras, la inteligencia artificial colaboró en la
+  redacción formal del informe, en la organización de los argumentos y en la
+  corrección de estilo. La IA no generó datos experimentales ni sustituyó la
+  ejecución de las pruebas.
+\end{itemize}
+
+Los experimentos, la selección final de las fuentes, la interpretación de los
+resultados y las decisiones del informe son de mi autoría. Verifiqué que cada
+referencia citada existiera y que las cifras y salidas mencionadas coincidieran con
+las capturas; cuando una afirmación no tenía respaldo en la evidencia, la retiré o la
+señalé como no verificada.
 
 % =====================================================================
 % REFERENCIAS (IEEE con biblatex; mínimo 6, 3 con DOI de revista indexada)
 % =====================================================================
+\clearpage
 \printbibliography[title={Referencias}]
 
 % =====================================================================
