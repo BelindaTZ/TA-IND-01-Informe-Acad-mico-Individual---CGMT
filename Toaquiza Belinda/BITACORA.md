@@ -109,3 +109,9 @@ Una entrada por cada día trabajado. Las fechas deben coincidir con los commits 
 - **Problema encontrado:** Las conclusiones debían ser afirmaciones concretas y no una repetición de la teoría, y el ensayo no midió latencia ni escrituras concurrentes, por lo que varias comparaciones habituales entre ambos motores quedaban fuera de lo demostrable.
 - **Cómo lo resolví:** Redacté cada conclusión con la evidencia que la sostiene y con su referencia, y cerré con el alcance del estudio. Verifiqué que las citas quedaran antes del punto, que no hubiera referencias sin resolver y que el documento compilara sin errores.
 - **Tiempo dedicado:** 30 min
+
+### 2026-11-13
+- **Qué hice:** Redacté la sección 5, «Ejemplos del entorno del estudiante», con dos casos observados de primera mano: una transferencia recibida en la aplicación móvil de Banco Pichincha que no aparecía en el historial pero sí en la búsqueda por número, y una prueba de la plataforma de capacitaciones del CNE que no se marcó como completada hasta el día siguiente. Relacioné ambos con la consistencia de lectura, la transparencia de distribución y el compromiso de CAP.
+- **Problema encontrado:** Los dos casos son observaciones de interfaz, sin acceso a la arquitectura de los servicios, así que no permitían afirmar una causa concreta. Además, la sección no debía convertirse en una denuncia de los servicios ni en una repetición de la teoría de la Unidad 1.
+- **Cómo lo resolví:** Presenté cada caso como una hipótesis compatible con lo observado, distinguí la durabilidad del dato de su visibilidad y relacioné el comportamiento con lo medido en E1 y E2. Añadí las fuentes sobre consistencia eventual y niveles de consistencia donde correspondía, y cerré con la idea de que la coherencia entre vistas es lo que se percibe como confiabilidad.
+- **Tiempo dedicado:** 30 min

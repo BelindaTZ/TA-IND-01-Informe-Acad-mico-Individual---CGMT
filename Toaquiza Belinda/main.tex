@@ -769,11 +769,82 @@ registra las capturas de evidencia que no se incluyen en este informe.
 % (SGA de la UTEQ, banca móvil, WhatsApp, plataforma de pagos, etc.).
 % Relaciona lo que observaste como usuario con un concepto de la unidad.
 
-\subsection{Ejemplo 1: \pendiente{sistema}}
-\pendiente{Qué observaste (caída, mensaje tardío, saldo que tardó en actualizarse) y con qué concepto se relaciona.}
+Los dos casos siguientes se observaron en servicios de uso cotidiano y muestran, en la
+interfaz, el mismo compromiso que se estudió en los motores distribuidos: una
+operación se completa, pero su efecto no aparece de inmediato en todas las vistas de
+la aplicación. No se conoce la arquitectura interna de esos servicios, por lo que la
+explicación se plantea como una hipótesis compatible con lo observado y con los
+conceptos de la Unidad~1.
 
-\subsection{Ejemplo 2: \pendiente{sistema}}
-\pendiente{Observación y concepto asociado.}
+\subsection{Ejemplo 1: aplicación móvil de Banco Pichincha}
+
+En una ocasión recibí una transferencia y la persona que la realizó me envió el
+comprobante. Al abrir el historial de transacciones de la aplicación, el pago no
+aparecía. Sin embargo, al buscar por el número de transferencia del comprobante, el
+sistema mostró el registro como válido. Es decir, la operación existía y estaba
+registrada, pero una de las vistas de la aplicación no la reflejaba en ese momento.
+
+El caso corresponde a una lectura que no observa una escritura ya confirmada, es
+decir, a una lectura desactualizada. La transparencia de distribución explica por qué
+la usuaria no puede advertirlo: la aplicación no informa qué réplica o servicio
+atendió cada consulta, y el historial y la búsqueda por número pueden resolverse por
+rutas distintas, una contra una copia todavía no actualizada y otra contra el
+registro autoritativo \cite{apacheCassandraGuarantees,ferreira2024consistency}. Bajo
+el teorema CAP, el sistema prefirió responder con la copia disponible antes que
+bloquear la consulta o devolver un error, y asumió el riesgo de mostrar un estado
+anterior. En los términos del experimento, es el mismo compromiso que se observó en
+E2: una lectura con garantía fuerte se habría detenido ante la duda, mientras que una
+lectura con menor garantía podía devolver la vista previa
+\cite{cockroachlabsReplication,apacheCassandraGuarantees}.
+
+La lección del caso es que la consistencia no se percibe en abstracto, sino en la
+diferencia entre la durabilidad de un dato y su visibilidad. La transferencia no se
+perdió: seguía disponible por su identificador. Lo que falló fue la coherencia entre
+dos vistas del mismo sistema, y esa incoherencia se interpreta como un error de la
+aplicación aunque el dato esté a salvo. Un diseño que exige quórum para leer, como el
+de \sistemaA{} en las operaciones probadas, habría devuelto un error antes que una
+lista incompleta; uno que permite \texttt{ONE}, como \sistemaB{}, puede devolver la
+copia desactualizada \cite{cockroachlabsReplication,apacheCassandraDynamo}. Para la
+persona usuaria, la diferencia entre ambos comportamientos no es técnica: en un caso
+ve «no existe» y en el otro ve «error», y ambas respuestas exigen una decisión
+distinta.
+
+\subsection{Ejemplo 2: plataforma de capacitaciones del CNE}
+
+En la plataforma de capacitaciones en línea del CNE realicé una prueba sencilla. Al
+terminarla, el sistema no la marcó como completada. La repetí tres veces ese mismo
+día y el estado no cambió; al día siguiente volví a responderla y entonces sí quedó
+registrada. La prueba era la misma y el resultado no varió: lo que cambió fue el
+momento en que se consultó el estado.
+
+El avance de una capacitación es una escritura de estado que debe quedar visible para
+la persona que la completó. Si la pantalla de progreso consulta una réplica o un
+servicio distinto del que recibe el intento, y la confirmación se propaga de forma
+asíncrona, la interfaz puede mostrar un estado anterior aunque el evento ya exista;
+ese comportamiento corresponde a la consistencia eventual
+\cite{apacheCassandraGuarantees,ferreira2024consistency}. La repetición manual actuó
+como un reintento del cliente y, además, permitió comprobar un requisito de diseño:
+la operación debería ser idempotente para que repetirla no duplique el registro ni
+altere la calificación. La convergencia observada al día siguiente es análoga a la
+que los motores distribuidos logran mediante mecanismos de reparación que comparan
+réplicas e intercambian diferencias, aunque en este caso no es posible saber si el
+cambio provino de una reparación, de una caché renovada o de un proceso interno del
+servicio \cite{apacheCassandraRepair}.
+
+El caso se relaciona con la tolerancia a fallos de la sección~4: en E1, tras volver a
+iniciar los nodos, el primer \texttt{nodetool status} todavía mostró dos nodos
+\texttt{DN} y el estado convergió después; la persona usuaria de una aplicación ve
+algo equivalente cuando el progreso tarda en actualizarse. La diferencia es que en
+el clúster la demora se explica por la propagación del estado entre réplicas, y en la
+plataforma solo se observa el efecto. Por eso, un sistema que privilegia la
+disponibilidad y la latencia debe comunicar el estado «pendiente de sincronización»
+en lugar de mostrar «no completado», y debe aceptar que un reintento sea seguro.
+
+Ambos ejemplos confirman que la transparencia de distribución tiene un límite
+práctico: el sistema puede ocultar dónde están los datos, pero no puede ocultar que
+dos vistas del mismo hecho no coinciden. La coherencia entre vistas, más que la
+ubicación de las réplicas, es lo que la persona usuaria percibe como confiabilidad
+\cite{apacheCassandraDynamo,cockroachlabsReplication}.
 
 % =====================================================================
 \section{Análisis comparativo}
