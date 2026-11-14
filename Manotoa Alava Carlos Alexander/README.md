@@ -1,3 +1,6 @@
+# Enlace al video de youtube:
+**Link:** https://youtu.be/F2ZR4tRdR3A
+
 # TA-IND-01: Análisis crítico de TiDB frente a YugabyteDB
 
 **Estudiante:** Manotoa Alava Carlos Alexander  

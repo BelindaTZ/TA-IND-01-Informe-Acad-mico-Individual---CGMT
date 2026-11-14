@@ -67,4 +67,4 @@
   * *Solución:* Se compiló desde la terminal mediante pdfLaTeX y biber, utilizando un script que guarda los archivos auxiliares en una carpeta separada.
 
   * *Problema:* El README todavía mencionaba el tema anterior y el archivo Docker Compose del repositorio estaba vacío.
-  * *Solución:* Se actualizó la descripción del trabajo y se incorporó la configuración utilizada en la práctica.
+  * *Solución:* Se actualizó la descripción del trabajo y se incorporó la configuración utilizada en la práctica.g
