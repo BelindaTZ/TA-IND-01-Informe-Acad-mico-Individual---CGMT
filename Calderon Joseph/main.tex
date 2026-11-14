@@ -4,11 +4,11 @@
 \usepackage[spanish,es-nodecimaldot]{babel}
 \usepackage[a4paper,margin=2.4cm]{geometry}
 \usepackage{graphicx,booktabs,tabularx,array,caption}
+\usepackage{csquotes}
 \usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
 \usepackage[hidelinks]{hyperref}
 \Urlmuskip=0mu plus 1mu
 \addbibresource{Referencias/referencias.bib}
-
 \captionsetup{hypcap=false}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
@@ -64,9 +64,9 @@ Fecha: 12 de noviembre de 2026
 \vspace{0.5em}
 
 \href{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT/tree/main/Calderon\%20Joseph}{%
-  \resizebox{0.95\textwidth}{!}{%
-    \texttt{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual---CGMT/tree/main/Calderon\%20Joseph}%
-  }%
+\resizebox{0.95\textwidth}{!}{%
+\texttt{https://github.com/BelindaTZ/TA-IND-01-Informe-Acad-mico-Individual\mbox{-}\mbox{-}\mbox{-}CGMT/tree/main/Calderon\%20Joseph}%
+}%
 }
 \par
 
@@ -80,18 +80,18 @@ Fecha: 12 de noviembre de 2026
 etcd es un almacén distribuido de clave y valor que mantiene datos de configuración y coordinación, como el estado del plano de control de Kubernetes. Este informe examina cómo su API y el consenso Raft permiten acceder a un estado común desde distintos miembros. El análisis aplica las siete transparencias de distribución, CAP y PACELC, y contrasta el diseño de etcd con Apache ZooKeeper. En un clúster local de tres contenedores se escribió una clave, se consultó desde otro miembro y se detuvo el líder. Los dos miembros restantes eligieron un nuevo líder y confirmaron otra escritura. Tras reiniciar el miembro detenido, sus índices de Raft coincidieron con los del resto y la consulta desde ese nodo devolvió el valor escrito durante su ausencia. El resultado muestra que el clúster pudo reanudar las escrituras al conservar una mayoría. Un incidente documentado ilustra un límite de esa recuperación: índices de Raft iguales pueden coexistir con diferencias en los datos persistidos. La comparación sitúa la principal ventaja de etcd en sus lecturas linealizables por defecto y su coste en la coordinación necesaria para sostenerlas.
 
 \section{Introducción}
-Los componentes del plano de control de Kubernetes necesitan compartir el estado de los objetos que administran. Una actualización debe quedar disponible para los procesos que actúan sobre ese estado. Kubernetes usa etcd como almacén de los datos del clúster. El servidor de la API accede a ese almacén y los controladores operan a través de la API de Kubernetes \cite{kubernetes}. También pueden usar etcd directamente aplicaciones que necesiten guardar configuración o coordinar quién puede modificar un recurso \cite{etcdapi}.
+Kubernetes necesita conservar un registro común de los recursos que administra y de sus cambios. Los componentes que consultan esa información deben poder trabajar sobre un estado coherente. Kubernetes usa etcd como almacén de los datos del clúster. El servidor de la API accede a ese almacén y los controladores operan a través de la API de Kubernetes \cite{kubernetes}. También pueden usar etcd directamente aplicaciones que necesiten guardar configuración o coordinar quién puede modificar un recurso \cite{etcdapi}.
 
 La escala relevante tiene dos partes. En el laboratorio hay tres votantes y un único equipo físico. En un despliegue mayor, el número de trabajadores de Kubernetes puede crecer sin añadir un votante de etcd por trabajador. Cada votante conserva una copia del estado replicado y las escrituras dependen de una mayoría. Un grupo de cinco votantes puede soportar la pérdida de dos y necesita tres para confirmar cambios. Aumentar el grupo cambia tanto la tolerancia como el coste de coordinación \cite{etcdfaq}. Se eligió etcd porque permite observar esas consecuencias con un clúster local y comparar sus garantías con las de otro servicio de coordinación.
 
 \section{Arquitectura del sistema}
-La API v3 recibe solicitudes como \texttt{Put}, \texttt{Range} y \texttt{Txn}. Cada miembro dispone de un servidor, un componente Raft y almacenamiento persistente. Raft ordena las propuestas en un registro. El almacén de claves aplica las entradas confirmadas y conserva revisiones para consultas y observación de cambios. El registro persistente permite recuperar el estado tras un reinicio \cite{etcdapi,etcdstorage}. Bora et al. formalizan en mCRL2 el comportamiento de Raft. Su trabajo permite distinguir el modelo de consenso del código que lo implementa \cite{bora2024raft}.
+La API v3 recibe solicitudes como \texttt{Put}, \texttt{Range} y \texttt{Txn}. Cada miembro dispone de un servidor, un componente Raft y almacenamiento persistente. Raft es el algoritmo de consenso que coordina la elección del líder y el orden de las operaciones en un registro. El almacén de claves aplica las entradas confirmadas y conserva revisiones para consultas y observación de cambios. El registro persistente permite recuperar el estado tras un reinicio \cite{etcdapi,etcdstorage}. Bora et al. formalizan en mCRL2 el comportamiento de Raft. Su trabajo permite distinguir el modelo de consenso del código que lo implementa \cite{bora2024raft}.
 
 \evidencia{Anexos/Anexo_B_diagrama_etcd.pdf}{Diagrama del estudiante en draw.io. Los roles corresponden a un estado posible del clúster.}{fig:arquitectura}
 
 El boceto del Anexo~\ref{an:boceto} ya representa al cliente, tres miembros y el paso de una escritura por el líder. El diagrama digital hace explícitos los puertos, distingue el acceso del cliente del tráfico entre pares y muestra dónde interviene el quórum. Su rótulo inferior corresponde a la fase de diseño del esquema. La ejecución posterior se documenta en la sección~\ref{sec:experimento}. Los nombres con guion pertenecen al esquema y los nombres sin guion identifican los servicios de Compose.
 
-El cliente puede iniciar una escritura a través de un seguidor. El miembro receptor propone el cambio y el líder dirige la replicación. Con tres votantes, una entrada nueva del término actual puede confirmarse al quedar replicada en dos. El miembro receptor aplica el cambio confirmado antes de contestar. En la configuración del experimento, el puerto interno de clientes fue 2379 y el tráfico entre miembros usó 2380. Solo \texttt{etcd1} publicó un puerto en el equipo anfitrión. Las pruebas usaron los nombres internos de los tres servicios.
+El cliente puede iniciar una escritura a través de un seguidor. El miembro receptor propone el cambio y el líder dirige la replicación. Con tres votantes, una escritura necesita la confirmación de al menos dos miembros. A esa mayoría se la conoce como quórum. El miembro receptor aplica el cambio confirmado antes de contestar. En nuestro experimento, los clientes se conectaron por el puerto interno 2379 y el tráfico entre miembros usó 2380. Solo \texttt{etcd1} publicó un puerto en el equipo anfitrión. Las pruebas usaron los nombres internos de los tres servicios.
 
 \section{Análisis con los conceptos de la Unidad 1}
 \subsection{Transparencias de distribución}
@@ -110,7 +110,7 @@ Las transparencias describen qué aspectos de la distribución quedan ocultos pa
 \subsection{CAP y PACELC}
 En CAP, la consistencia se entiende como una vista linealizable y la disponibilidad exige que cada solicitud a un nodo operativo pueda completarse, incluso durante una partición. En una división de dos miembros contra uno, el lado mayoritario puede elegir líder y confirmar escrituras. El lado aislado no puede confirmar una escritura ni sostener por sí solo la lectura linealizable. Por eso las operaciones fuertes de etcd se clasifican como CP. Una lectura local de un miembro aislado puede devolver una revisión anterior y ofrece otra garantía \cite{vansteen2023,etcdgar,etcdfail}.
 
-PACELC examina además lo que ocurre con la red sana. Una escritura espera la replicación suficiente y una lectura linealizable requiere comprobar que el miembro tiene acceso al estado confirmado bajo un líder válido. En ambas rutas etcd prioriza consistencia, con coste de coordinación. La opción \texttt{serializable} permite responder con el estado local y prioriza la latencia de esa lectura a cambio de posible desfase. Para las operaciones fuertes, el comportamiento se puede resumir como PC/EC. Esta clasificación se deduce de las garantías de la API. La prueba de este informe no midió latencia ni aisló la red \cite{etcdgar,vansteen2023}.
+PACELC examina además lo que ocurre con la red sana. Una escritura espera la replicación suficiente y una lectura linealizable requiere comprobar que el miembro tiene acceso al estado confirmado bajo un líder válido. En ambas rutas etcd prioriza consistencia, con coste de coordinación. La opción \texttt{serializable} permite responder con el estado local y prioriza la latencia de esa lectura a cambio de posible desfase. En PACELC, esto se resume como PC/EC: se mantiene la consistencia durante una partición y también se prioriza cuando la red funciona normalmente, aunque eso cueste tiempo de respuesta. Es una interpretación de las garantías de la API, no una medición de esta práctica. La prueba de este informe no midió latencia ni aisló la red \cite{etcdgar,vansteen2023}.
 
 \subsection{Modelos de comunicación}
 El diseño combina un modelo cliente-servidor en la API con comunicación entre pares dentro del clúster. Los pares pueden votar y cambiar de rol, aunque el líder dirige la replicación en cada término. El cliente de la API v3 usa llamadas gRPC sobre HTTP/2 y TCP. \texttt{Put} y \texttt{Range} siguen el patrón petición-respuesta. El cliente de línea de comandos espera la respuesta o el vencimiento de su plazo \cite{etcdapi,etcdclient}.
@@ -171,7 +171,7 @@ La comparación toma las garantías de etcd y las documentadas por Apache ZooKee
 Criterio & etcd & Apache ZooKeeper \\
 \midrule
 Acceso y datos & Claves en un espacio plano, con rangos por prefijo y revisiones. & Árbol de znodes con rutas y versiones. \\
-Consenso y escritura & Raft replica el registro y confirma con mayoría. & Zab difunde cambios ordenados por el líder. La confirmación depende de un quórum. \\
+Consenso y escritura & Raft replica el registro y confirma con mayoría. & Zab, su protocolo de difusión, ordena los cambios desde el líder y necesita quórum. \\
 CAP y partición & El lado sin mayoría no puede avanzar operaciones fuertes. & El lado sin quórum no confirma escrituras. El modo opcional de solo lectura puede servir datos locales. \\
 Latencia y consistencia & Lectura linealizable por defecto. Lectura local serializable opcional. & Las lecturas ordinarias se sirven desde el servidor conectado y pueden ir retrasadas. \\
 Comunicación & RPC gRPC y flujo \texttt{Watch} por revisiones. & Protocolo cliente-servidor sobre TCP y avisos de cambios. Los watches clásicos se disparan una vez. \\
@@ -184,9 +184,9 @@ Fallos y sesión & Reelección, reconexión del cliente y claves asociadas a \te
 El punto de decisión es qué debe saber la aplicación al leer. Si un controlador actúa sobre la última configuración confirmada, la lectura linealizable por defecto de etcd encaja con esa necesidad. Si el servicio se organiza alrededor de rutas jerárquicas, sesiones y presencia representada por znodes efímeros, ZooKeeper ofrece esas abstracciones directamente. Su lectura local ordinaria es atractiva para consultas que admiten atraso. En una decisión que dependa del dato más reciente, ese atraso debe tratarse explícitamente. La comparación describe el diseño y las garantías. El laboratorio usó solo etcd.
 
 \section{Postura crítica}
-La ventaja de etcd es que la mayoría y las revisiones ofrecen una base clara para coordinar cambios. En el laboratorio, cambiar de líder y mantener dos miembros bastó para volver a escribir. El coste aparece cuando las escrituras cruzan enlaces lentos o los discos demoran la persistencia. En esos casos, añadir réplicas puede aumentar el coste operativo y no reparte automáticamente la dirección del consenso. Du et al. proponen otra estrategia de elección y Shang et al. estudian una organización de Raft en dos niveles. Yu et al. proponen adaptaciones para redes inalámbricas \cite{du2023leader,shang2025draft,yu2024adaptive}. Son propuestas de investigación y sus resultados corresponden a sus propios escenarios.
+La ventaja de etcd es que la mayoría y las revisiones ofrecen una base clara para coordinar cambios. En el laboratorio, cambiar de líder y mantener dos miembros bastó para volver a escribir. El coste aparece cuando las escrituras cruzan enlaces lentos o los discos demoran la persistencia. En esos casos, añadir réplicas puede aumentar el coste operativo y no reparte automáticamente el trabajo del líder \cite{etcdfaq}. Du et al. proponen otra estrategia de elección y Shang et al. estudian una organización de Raft en dos niveles. Yu et al. proponen adaptaciones para redes inalámbricas \cite{du2023leader,shang2025draft,yu2024adaptive}. Son propuestas de investigación y sus resultados corresponden a sus propios escenarios.
 
-Usaría etcd para configuración y coordinación donde una lectura atrasada pueda causar acciones incompatibles. Para telemetría de alto volumen o para escrituras que deban seguir disponibles a ambos lados de una partición, sus garantías y su dependencia del quórum encajan peor. La decisión depende de qué operaciones toleran atraso y cuáles requieren conocer el último estado confirmado.
+Usaría etcd para configuración y coordinación donde una lectura atrasada pueda causar acciones incompatibles. Para guardar telemetría de alto volumen o para aplicaciones que deban seguir escribiendo en ambos lados de una partición, sus garantías y la dependencia del quórum encajan peor \cite{etcdfaq,etcdgar}. La decisión depende de qué operaciones toleran atraso y cuáles requieren conocer el último estado confirmado.
 
 Un ensayo de caída y retorno comprueba un recorrido concreto. Gulcan et al. usan modelos para guiar la exploración de estados en implementaciones distribuidas, incluida Etcd-raft \cite{gulcan2025modelfuzz}. Borgarelli et al. emplean recompensas de exploración para dirigir las pruebas hacia escenarios difíciles de alcanzar \cite{borgarelli2024reward}. Los dos trabajos explican por qué una elección exitosa en una práctica local deja abiertas preguntas sobre fallos combinados y secuencias de mensajes.
 
@@ -209,7 +209,7 @@ El experimento con etcd se ejecutó en un entorno local con Docker. Los comandos
 \appendix
 \section{Bosquejo de arquitectura a mano}\label{an:boceto}
 \begin{center}
-\includegraphics[angle=90,origin=c,width=\linewidth,height=0.78\textheight,keepaspectratio]{Anexos/Anexo_A_bosquejo_etcd.jpg}
+\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{Anexos/Anexo_A_bosquejo_etcd.jpg}
 \end{center}
 
 \clearpage
