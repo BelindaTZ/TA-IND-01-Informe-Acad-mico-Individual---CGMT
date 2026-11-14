@@ -1,9 +1,5 @@
 # Experimentos — TA-IND-01: CockroachDB vs. Apache Cassandra
 
-> Registra los comandos y resultados observados; conserva como no medidos los datos que no aparezcan en las capturas.
-> Antes de cada paso ejecuta `Get-Date` en PowerShell o `date` en Bash para registrar la hora; comprueba también que la terminal permita identificar la sesión.
-> Las capturas citadas están en `../Capturas/`.
-
 ---
 
 ## 0. Entorno (común a ambos experimentos)

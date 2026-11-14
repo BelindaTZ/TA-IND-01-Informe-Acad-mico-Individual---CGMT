@@ -125,7 +125,7 @@
   \vspace{0.2cm}
   {\large Fecha: \today\par}
   \vspace{0.2cm}
-  {\large Video de presentación: \href{https://youtu.be/jjIqFWVfyhc}{\nolinkurl{https://youtu.be/jjIqFWVfyhc}}\par}
+  {\large Video de presentación: \href{https://youtu.be/jjIqFWVfyhc}{\textcolor[HTML]{1D9BF0}{\nolinkurl{https://youtu.be/jjIqFWVfyhc}}}\par}
   \vspace{0.6cm}
   \vfill
 \end{titlepage}
@@ -234,8 +234,8 @@ reproducen aquí está en \texttt{experimento/comandos.md} del repositorio.
 \subsection{Entorno y justificación}
 
 Ambos sistemas se ejecutaron con Docker sobre Windows, en PowerShell y en una
-sola máquina (\texttt{DESKTOP-OCH81AB}); la versión del motor de Docker no quedó
-registrada. Se usaron los archivos de composición de
+sola máquina (\texttt{DESKTOP-OCH81AB}) con Docker 29.9.3 (build 5457199).
+Se usaron los archivos de composición de
 \texttt{experimento/cockroachdb/} y \texttt{experimento/cassandra/}.
 \sistemaA{} correspondió a la
 versión 26.4.0 (CCL), con la imagen \texttt{cockroachdb/cockroach:v26.4.0} y tres
@@ -752,14 +752,6 @@ red distribuida entre máquinas. Se probaron una topología, unas versiones y un
 operaciones concretas, y los resultados no se generalizan a otras configuraciones.
 No se midieron tiempos de respuesta ni la duración exacta de detección y
 recuperación.
-
-En \sistemaA{}, la respuesta de la escritura de la fila 32 durante el aislamiento no
-quedó registrada, y que no aparezca en la consulta posterior no determina el
-resultado de ese intento. En \sistemaB{}, la lectura posterior a la reconexión
-devolvió las filas 21, 23 y 24; la 22 no quedó visible y la 26 se consultó sin
-haberse intentado escribir. Las capturas de las 17:26 a las 17:31 corresponden a la
-repetición del escenario de \sistemaA{} para recuperar una captura perdida, no a una
-desconexión adicional.
 
 Para reproducir el ensayo se requieren Docker en Windows, PowerShell y los archivos
 de composición de \texttt{experimento/}. En \sistemaA{} hay que generar los
