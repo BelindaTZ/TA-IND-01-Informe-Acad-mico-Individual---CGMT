@@ -1,95 +1,66 @@
+
 # Bitácora de trabajo — TA-IND-01
 
 **Estudiante:** Calderón Saltos Joseph Alexander  
-**Sistema:** etcd  
-**Comparación:** Apache ZooKeeper
+**Sistema analizado:** etcd  
+**Sistema de comparación:** Apache ZooKeeper
 
 ## 11 de noviembre de 2026
 
-**Actividad:** Selección del sistema distribuido y preparación inicial del repositorio.
+**Actividad:** Selección del sistema y preparación del repositorio.
 
 **Avances:**
+- Seleccioné etcd para el análisis.
+- Elegí Apache ZooKeeper como sistema de comparación.
+- Organicé seis referencias académicas relacionadas con Raft, consenso y pruebas de sistemas distribuidos.
+- Preparé la estructura inicial del trabajo.
 
-* Se seleccionó etcd como sistema principal.
-* Se eligió Apache ZooKeeper para la comparación.
-* Se organizaron seis referencias académicas sobre Raft, consenso y pruebas de sistemas distribuidos.
-* Se preparó la estructura inicial de la documentación.
+**Aspectos pendientes:** Revisar las fuentes y preparar el esquema de arquitectura.
 
-**Aspectos por revisar:**
-
-* Leer las fuentes seleccionadas y extraer los datos necesarios para el informe.
-* Preparar el primer esquema de arquitectura.
-
-**Horario de trabajo:** 23:01 a 23:25.
+**Horario de trabajo:** 23:01 a 23:25.  
 **Tiempo dedicado:** 24 minutos.
 
-**Estado:** Preparación inicial. No se han realizado pruebas experimentales.
+## 12 de noviembre de 2026
 
-## 
+**Actividad:** Diseño de arquitectura y ejecución del experimento.
 
-## \## 12 de noviembre de 2026
+**Avances:**
+- Elaboré el bosquejo de arquitectura y su versión digital en draw.io.
+- Configuré un clúster de tres nodos con etcd 3.7.3 en Docker Desktop.
+- Identifiqué a etcd3 como líder inicial.
+- Comprobé la escritura y lectura de información desde diferentes miembros.
+- Detuve etcd3 y observé que etcd1 asumió el liderazgo.
+- Realicé una nueva escritura con dos miembros activos.
+- Reinicié etcd3 y comprobé que recuperaba la información.
+- Guardé cinco capturas y documenté los comandos y resultados.
 
+**Dificultad:** Windows rechazó la publicación del puerto 12379.
 
+**Solución:** Retiré las publicaciones de puertos de etcd2 y etcd3, manteniendo su comunicación por la red interna de Docker.
 
-\*\*Actividad:\*\* Diseño de la arquitectura, ejecución del clúster de etcd y preparación del informe.
+**Intervalo de actividad registrado:** aproximadamente de 17:42 a 21:22, con pausas posibles.
 
+**Tiempo efectivo dedicado:** [Completar según el tiempo real de trabajo].
 
+## 13 de noviembre de 2026
 
-\*\*Avances:\*\*
+**Actividad:** Revisión del informe, compilación y preparación de la sustentación.
 
+**Avances:**
+- Revisé el análisis técnico de etcd y la comparación con Apache ZooKeeper.
+- Comprobé las referencias académicas y sus DOI.
+- Incorporé los ejemplos del SGA de la UTEQ y WhatsApp.
+- Revisé las capturas de lectura y su relación con las citas del informe.
+- Corregí errores de LaTeX relacionados con la portada y la bibliografía.
+- Compilé el informe mediante pdfLaTeX y Biber.
+- Revisé el PDF generado, incluyendo sus referencias y anexos.
+- Preparé y grabé el video de sustentación con OBS.
+- Publiqué el video en YouTube.
 
+**Dificultades:** Durante la preparación aparecieron problemas de compilación en LaTeX, un bosquejo con orientación incorrecta y una fuente de micrófono silenciada en OBS.
 
-\- Elaboré el bosquejo inicial de la arquitectura y su versión digital en draw.io.
+**Soluciones:** Se corrigió el código de la portada, se verificaron las rutas de los archivos, se ajustó la orientación del bosquejo y se revisó la configuración de audio.
 
-\- Configuré tres nodos de etcd 3.7.3 mediante Docker Compose en Windows 11.
+**Resultado:** El informe quedó compilado en PDF y se obtuvo el enlace del video de sustentación.
 
-\- Comprobé el estado del clúster e identifiqué a `etcd3` como líder inicial.
-
-\- Realicé operaciones de escritura y lectura desde diferentes nodos.
-
-\- Detuve `etcd3` y comprobé que `etcd1` asumió el liderazgo.
-
-\- Verifiqué que el clúster continuaba aceptando escrituras con dos nodos activos.
-
-\- Reinicié `etcd3` y comprobé que recuperaba el dato registrado durante su ausencia.
-
-\- Guardé cinco capturas y documenté los comandos y resultados del experimento.
-
-\- Subí la estructura inicial del informe en LaTeX.
-
-
-
-\*\*Dificultad encontrada:\*\*
-
-
-
-Windows rechazó la publicación del puerto `12379`, lo que impidió iniciar correctamente `etcd2`.
-
-
-
-\*\*Solución:\*\*
-
-
-
-Retiré las publicaciones de puertos de `etcd2` y `etcd3` en `compose.yaml`. Ambos mantuvieron la comunicación interna mediante la red de Docker y el clúster pudo iniciarse.
-
-
-
-\*\*Pendiente:\*\*
-
-
-
-Completar los dos ejemplos personales, revisar las referencias, obtener las capturas de lectura de artículos, comprobar la compilación del informe y preparar el video de sustentación.
-
-
-
-\*\*Horario registrado en GitHub:\*\* 17:42 a 21:22.
-
-
-
-\*\*Intervalo entre el primer y último commit:\*\* 3 horas y 40 minutos. El tiempo efectivo puede variar si hubo pausas.
-
-
-
-\*\*Estado:\*\* Experimento documentado y borrador inicial del informe incorporado al repositorio.
-
+**Tiempo efectivo dedicado:** [Completar según el tiempo real de trabajo].
