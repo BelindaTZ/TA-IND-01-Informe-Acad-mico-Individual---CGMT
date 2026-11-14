@@ -806,18 +806,173 @@ La diferencia práctica principal es dónde se fija el compromiso de disponibili
 % Fortalezas, limitaciones, trade-offs y contextos donde NO sería la mejor
 % opción. Toda afirmación argumentada y respaldada.
 \subsection{Fortalezas}
-\pendiente{}
+
+La fortaleza central de \sistemaA{} es que conserva una interfaz SQL y un modelo
+relacional sobre un almacenamiento distribuido, de modo que la aplicación no elige
+un nivel de consistencia por operación ni necesita conocer la ubicación de los
+datos: la capa de rangos y el consenso Raft resuelven ambas decisiones
+\cite{cockroachlabsArchitecture,cockroachlabsReplication}. Esa separación reduce el
+riesgo de configurar mal una lectura o una escritura, porque la coherencia es la
+regla predeterminada y no una opción que el cliente pueda omitir. En el ensayo, el
+clúster confirmó lecturas y escrituras con un nodo detenido y mantuvo la fila 31
+visible después de reconectar el nodo aislado, sin que la sesión SQL tuviera que
+cambiar de configuración entre etapas.
+
+Sobre esa base, \sistemaA{} incorpora mecanismos pensados para la operación
+geográfica, como las tablas multi-región y los arrendamientos de líder
+\cite{vanbenschoten2022multiregion,kettaneh2026leaderleases}, además de las
+lecturas de seguidor que permiten atender consultas en una réplica sin esperar al
+líder \cite{cockroachlabsFollowerReads}. El experimento no ejercitó esas funciones,
+pero muestran que el mismo modelo de quórum puede extenderse a despliegues
+distribuidos sin cambiar el contrato de la aplicación. La contraparte es que la
+coherencia se apoya en una mayoría por rango y no en una réplica privilegiada, lo
+que evita depender de un nodo concreto y explica por qué el clúster siguió
+respondiendo cuando se detuvo \texttt{roach2}.
+
+La fortaleza simétrica de \sistemaB{} es la disponibilidad graduable. El nivel de
+consistencia de cada operación fija cuántas réplicas deben responder y, por tanto,
+cuánta tolerancia se acepta frente a nodos caídos o aislados
+\cite{apacheCassandraDynamo,apacheCassandraGuarantees}. En E1, con dos nodos
+detenidos, \texttt{ONE} completó la lectura y la escritura de la fila 7; en E2, el
+lado aislado pudo escribir la fila 21 y el lado mayoritario las filas 23 y 24. Esa
+capacidad de seguir operando con una sola réplica disponible es la ventaja que el
+modelo de \sistemaA{} no ofrece en las operaciones probadas. A ello se suman el
+particionamiento por tokens, que permite crecer agregando nodos, y los mecanismos
+de reparación entre réplicas \cite{apacheCassandraArchitecture,apacheCassandraRepair}.
+El caso de Discord, con un clúster de 177 nodos y trillones de mensajes, confirma
+que el modelo sostiene operación a gran escala, aunque también documenta el costo de
+mantenerlo \cite{discord2023cassandra}.
+
+Ambas fortalezas son condicionales y no comparables en abstracto: la de \sistemaA{}
+es la coherencia sin configuración, y la de \sistemaB{}, la disponibilidad que el
+cliente decide operación por operación. El contraste de la sección~6 y los
+resultados de la sección~4 respaldan esa lectura, porque la diferencia observada no
+provino de la topología, que fue la misma de tres réplicas, sino de dónde se fija
+el compromiso entre consistencia y disponibilidad
+\cite{cockroachlabsReplication,apacheCassandraGuarantees}.
+
 \subsection{Limitaciones y compromisos (\emph{trade-offs})}
-\pendiente{}
+
+\sistemaA{} paga su coherencia con disponibilidad y con coordinación. Cuando el
+rango perdió la mayoría, la consola SQL dejó de obtener resultado con el mensaje
+\texttt{replica unavailable}, y la sesión aislada de E2 falló con \texttt{lost
+quorum} y \texttt{SQLSTATE XXUUU}; en ambos casos el sistema prefirió no confirmar
+antes que devolver un dato sin respaldo mayoritario
+\cite{cockroachlabsReplication}. Cada escritura confirmada exige el acuerdo de dos
+de las tres réplicas votantes, de modo que el costo en latencia crece con la
+distancia entre nodos, y el modelo PACELC permite anticipar que, sin partición, el
+sistema tiende a privilegiar la consistencia sobre la latencia
+\cite{apacheCassandraDynamo}. A eso se añade un costo operativo propio: los
+certificados TLS, la inicialización del clúster y la capa de metadatos que reubica
+los rangos. En E1, tras la caída de dos nodos, \texttt{node status} mostró a
+\texttt{roach1} con \texttt{address=NULL} e \texttt{is\_live=false}, y el rango
+cambió de identificador 87 a 88; la captura documenta el hecho, pero no permite
+atribuirlo a una causa concreta.
+
+En \sistemaB{} la contrapartida se traslada al cliente y a la operación. Como el
+nivel de consistencia se elige por consulta, una aplicación puede leer datos
+desactualizados con \texttt{ONE} o dejar de operar con \texttt{ALL} cuando falta una
+réplica; en E1, \texttt{ALL} devolvió \texttt{Unavailable} con tres réplicas
+requeridas y dos vivas, y en E2 lo mismo ocurrió en el lado mayoritario
+\cite{apacheCassandraGuarantees}. La convergencia posterior depende de mecanismos de
+mejor esfuerzo y de tareas de reparación \cite{apacheCassandraRepair}: en E2, la
+fila 21 escrita en el lado aislado solo se verificó después de reconectar, la fila
+22 no apareció en la lectura final y la 26 se consultó sin haberse escrito. El
+ensayo no permite saber si medió hints, reparación o ambos. La literatura reporta
+además que el nivel de consistencia afecta el rendimiento y el consumo energético
+\cite{ferreira2024consistency,nejati2026cassandra,silva2023lowpower}, pero aquí no
+se registraron latencias, de modo que esa dimensión queda fuera de las conclusiones.
+
+Los dos motores comparten un límite del estudio y un costo que conviene declarar.
+La prueba se ejecutó en una sola máquina, con contenedores, y midió disponibilidad y
+consistencia observadas, no rendimiento ni comportamiento ante fallas de hardware.
+Operar cualquiera de los dos exige personal que entienda su modelo: en \sistemaA{},
+la gestión de certificados y del consenso por rango; en \sistemaB{}, la elección del
+nivel por operación y la ejecución periódica de \texttt{nodetool repair}. Elegir uno
+sin ese conocimiento traslada el riesgo del motor a la aplicación
+\cite{cockroachlabsArchitecture,apacheCassandraArchitecture}.
+
 \subsection{Contextos en los que no sería la mejor opción}
-\pendiente{}
+
+\sistemaA{} no sería la mejor opción cuando la prioridad es que ninguna región deje
+de aceptar escrituras durante una partición o cuando la latencia de escritura es más
+importante que la uniformidad inmediata del dato. En esos escenarios, la regla de
+mayoría por rango convierte la disponibilidad en rehén de la conectividad, tal como
+ocurrió en E2: el lado aislado no pudo leer ni confirmar la escritura mientras el
+lado mayoritario seguía operando \cite{cockroachlabsReplication}. Tampoco sería la
+elección más económica para cargas de escritura masiva con claves simples, donde el
+costo de coordinar cada rango puede superar el beneficio de las transacciones y del
+SQL, ni para equipos que no puedan asumir la operación de certificados y de un
+clúster con consenso.
+
+\sistemaB{} no sería la mejor opción cuando la aplicación necesita transacciones que
+abarcan varias filas, unicidad, integridad referencial o lecturas lineales por
+defecto, porque esas garantías no forman parte de su modelo de consistencia
+tunable \cite{apacheCassandraGuarantees}. En E1 y E2, las operaciones con
+\texttt{QUORUM} y \texttt{ALL} fallaron en cuanto faltó una réplica, de modo que un
+sistema que exige siempre esa garantía no gana disponibilidad y sí hereda la
+complejidad de elegir el nivel. Tampoco sería adecuado si el equipo no puede sostener
+la reparación y el monitoreo del anillo, o si el volumen de datos cabe en un nodo y
+no justifica la operación distribuida.
+
+La comparación tampoco favorece a ninguno de los dos en todos los contextos. Para
+volúmenes que caben en un servidor, un motor relacional centralizado evita la
+complejidad de ambos; para clústeres de bajo consumo, la literatura muestra que la
+elección depende más del ajuste entre carga y recursos que de la etiqueta del
+motor \cite{silva2023lowpower}. La postura de este informe es, por tanto,
+condicional: \sistemaA{} cuando la coherencia y el SQL son requisito, \sistemaB{}
+cuando la disponibilidad por operación lo es, y ninguno cuando el problema no exige
+distribución \cite{cockroachlabsReplication,apacheCassandraDynamo}.
 
 % =====================================================================
 \section{Conclusiones}
 % =====================================================================
 % Afirmaciones concretas derivadas del análisis y del experimento;
 % no repeticiones de la teoría.
-\pendiente{Conclusiones concretas basadas en el análisis y lo observado en el experimento.}
+El análisis documental y los dos experimentos permiten sostener cinco conclusiones
+concretas.
+
+\begin{itemize}
+  \item \textbf{El compromiso se decide en lugares distintos.} En \sistemaA{} la
+  regla de mayoría por rango fija la disponibilidad del sistema completo para las
+  operaciones actuales \cite{cockroachlabsReplication}; en \sistemaB{} la decide el
+  cliente al elegir \texttt{ONE}, \texttt{QUORUM} o \texttt{ALL} para cada
+  operación \cite{apacheCassandraGuarantees}. Esa diferencia de diseño explica los
+  resultados mejor que cualquier diferencia de topología, porque ambos clústeres
+  usaron tres réplicas.
+  \item \textbf{La tolerancia a fallos observada coincide con el modelo.}
+  \sistemaA{} sostuvo lectura y escritura con un nodo detenido y dejó de confirmar
+  al perder la mayoría; \sistemaB{} operó con \texttt{ONE} incluso con dos nodos
+  detenidos y en ambos lados de la partición, y falló con \texttt{QUORUM} y
+  \texttt{ALL} cuando no reunió las respuestas requeridas. La predicción formulada
+  antes de cada ensayo se cumplió en las operaciones probadas.
+  \item \textbf{La transparencia tiene un límite práctico.} Ambos motores ocultan la
+  ubicación de los datos, pero no la falla: la pérdida de quórum llega a la
+  aplicación como \texttt{replica unavailable} o \texttt{Unavailable}. La
+  diferencia es que \sistemaA{} exige resolverla en el clúster, mientras que
+  \sistemaB{} permite que la aplicación la enfrente con un nivel menor, a cambio de
+  aceptar datos posiblemente desactualizados
+  \cite{cockroachlabsArchitecture,apacheCassandraDynamo}.
+  \item \textbf{No hay ganador absoluto, sino ajuste al requisito.} Si el sistema
+  requiere transacciones, SQL y coherencia por defecto, \sistemaA{} evita trasladar
+  esa decisión al código; si requiere seguir aceptando escrituras durante una
+  partición y puede tolerar convergencia posterior, \sistemaB{} ofrece esa
+  flexibilidad \cite{apacheCassandraRepair,vanbenschoten2022multiregion}. La
+  elección inversa obliga a construir en la aplicación lo que el otro motor ya
+  resuelve.
+  \item \textbf{El alcance de la evidencia es acotado.} Los ensayos se hicieron en
+  una sola máquina, con tres contenedores por motor, y no midieron latencia ni
+  escrituras concurrentes sobre una misma clave. Por eso las conclusiones se limitan
+  a disponibilidad y consistencia observadas; afirmar cuál es más rápido exigiría un
+  diseño experimental con mediciones temporales y cargas controladas
+  \cite{ferreira2024consistency,silva2023lowpower}.
+\end{itemize}
+
+En conjunto, la evidencia respalda la postura de la sección~7: \sistemaA{} es una
+opción sólida cuando la coherencia y el modelo relacional son requisitos, y
+\sistemaB{} cuando la disponibilidad graduable y la escala de escritura lo son. La
+decisión responsable no depende de la etiqueta del motor, sino de qué se está
+dispuesto a ceder cuando la red falla.
 
 % =====================================================================
 \section*{Declaración de uso de inteligencia artificial}
