@@ -97,3 +97,15 @@ Una entrada por cada día trabajado. Las fechas deben coincidir con los commits 
 - **Problema encontrado:** Los comandos y las capturas estaban repartidos en el registro de la práctica y no había mediciones de latencia que permitieran comparar rendimiento. Además, algunos listados largos se partían entre páginas y las rutas de los archivos de composición desbordaban el margen.
 - **Cómo lo resolví:** Ordené el contenido en 4.1 a 4.5, referencié cada afirmación con las fuentes sobre quórum, replicación y niveles de consistencia, y remití a `experimento/comandos.md` para los pasos que no se reproducen en el informe. Compacté los listados, ajusté el ancho de las tablas, registré la versión de Docker empleada y verifiqué que no quedaran errores ni referencias sin resolver en la compilación.
 - **Tiempo dedicado:** 30 min
+
+### 2026-11-13
+- **Qué hice:** Redacté la sección 7, «Postura crítica». En 7.1 expuse las fortalezas de cada motor, en 7.2 las limitaciones y los compromisos (trade-offs) y en 7.3 los contextos en los que ninguno de los dos sería la mejor opción, con las afirmaciones respaldadas por las fuentes y por lo observado en los experimentos.
+- **Problema encontrado:** La sección 6 ya describía las diferencias, así que la postura crítica corría el riesgo de repetir la comparación. Además, algunas afirmaciones sobre latencia y rendimiento no tenían respaldo en el ensayo, porque no se registraron tiempos.
+- **Cómo lo resolví:** Organicé la sección en fortalezas, limitaciones y contextos, y distinguí de forma explícita lo observado en E1 y E2 de lo que solo sostiene la documentación. Retiré las conclusiones de rendimiento y las reemplacé por el contraste entre coherencia sin configuración y disponibilidad graduable.
+- **Tiempo dedicado:** 30 min
+
+### 2026-11-13
+- **Qué hice:** Redacté la sección 8, «Conclusiones». Formulé cinco conclusiones derivadas del análisis de la sección 3 y de los resultados de la sección 4: dónde se decide el compromiso, coincidencia entre el modelo y el ensayo, límite práctico de la transparencia, ajuste al requisito y alcance de la evidencia.
+- **Problema encontrado:** Las conclusiones debían ser afirmaciones concretas y no una repetición de la teoría, y el ensayo no midió latencia ni escrituras concurrentes, por lo que varias comparaciones habituales entre ambos motores quedaban fuera de lo demostrable.
+- **Cómo lo resolví:** Redacté cada conclusión con la evidencia que la sostiene y con su referencia, y cerré con el alcance del estudio. Verifiqué que las citas quedaran antes del punto, que no hubiera referencias sin resolver y que el documento compilara sin errores.
+- **Tiempo dedicado:** 30 min
